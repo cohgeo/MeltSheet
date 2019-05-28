@@ -1,7 +1,6 @@
-# This script calculates a steady state geotherm based on a finite difference 
-# model with constant heat flow with equations derived in class on 2/27/19 and 
-# plots the geotherm.
-# Updated 2019.03.05 CH.
+# This script calculates a geotherm based on a finite difference model with a
+# perterbation at the surface representing an impact melt sheet.
+# Updated 2019.05.28 CH.
 
 
 ## SETUP -----------------------------------------------------------------------
@@ -60,10 +59,10 @@
 # Input boundary condtions.
   
   # Input the surface temperature.
-  Ts <- 20  # [Â°C]
+  Ts <- 20  # [°C]
   
   # Input the basal temperature.
-  Tb <- 1020  # [Â°C]
+  # Tb <- 1020  # [°C]
   
 
 ## SET MODEL STEP SIZES --------------------------------------------------------
@@ -72,7 +71,7 @@
 # model. Convert values to the correct units for calculations.
   
   # Input the change in distance.
-  delta.x <- 1000  # [m]
+  delta.x <- 100  # [m]
   # delta.x2 <- delta.x ^ 2  # [m^2]
   
   # Calculate the change in time based on the stability criterion for the model.
@@ -81,12 +80,12 @@
   # K.delta.t <- K * delta.t.s   # [m^2]
   
   # Create a vector of distances over which to evaluate the model.
-  max.depth.km <- 50  # Set maximum depth of model in km.
+  max.depth.km <- 10  # Set maximum depth of model in km.
   x <- vector()  # Initialize vector.
   x <- seq(from = 0, to = (max.depth.km * 1000), by = delta.x)
   
   # Create a vector of time over which to evaluate the model.
-  max.time.Ma <- 21  # Set maximum time of model in Ma.
+  max.time.Ma <- 10  # Set maximum time of model in Ma.
   t.Ma <- vector()  # Initialize vector.
   t.Ma <- seq(from = 0, to = max.time.Ma, by = delta.t.Ma)
   t.s <- vector()  # Initialize vector.
@@ -115,7 +114,9 @@
   # Uncomment and motify relevant lines below.
   # TC[1, 5] <- 500
   # TC[1, 5:7] <- 500
-  TC[1, 5:7] <- c(500, 600, 500)
+  # TC[1, 2:11] <- c(500, 600, 500)
+  TC[1, 2:11] <- 1500
+  TC[1, 12:21] <- 1000
   
   
 ## SOLVE FINITE DIFERENCE MODEL ------------------------------------------------
@@ -155,17 +156,17 @@
   # Build data frame, pulling rows of times of interest from TC.
   TC.DF <- as.data.frame(t(data.frame("t.0"  = TC[(match(0, t.Ma.round)), ], 
                                     "t.0.01" = TC[(match(0.01, t.Ma.round)), ], 
-                                    "t.0.1"  = TC[(match(0.1, t.Ma.round)), ], 
-                                    "t.1"    = TC[(match(1, t.Ma.round)), ], 
-                                    "t.5"    = TC[(match(5, t.Ma.round)), ], 
-                                    "t.10"   = TC[(match(10, t.Ma.round)), ], 
-                                    "t.20"   = TC[(match(20, t.Ma.round)), ])))
+                                    "t.0.05"  = TC[(match(0.05, t.Ma.round)), ], 
+                                    "t.0.1"    = TC[(match(0.1, t.Ma.round)), ], 
+                                    "t.0.5"    = TC[(match(0.5, t.Ma.round)), ], 
+                                    "t.1"   = TC[(match(1, t.Ma.round)), ], 
+                                    "t.5"   = TC[(match(5, t.Ma.round)), ])))
   
   # Rename columns based on depth in km associated with each starting value.
   colnames(TC.DF) <- x / 1000 # TC.DF[1, ]  # could also use starting values
   
   # Add time step column for plotting.
-  TC.DF$time.Ma <- c(0, 0.01, 0.1, 1, 5, 10, 20)
+  TC.DF$time.Ma <- c(0, 0.01, 0.05, 0.1, 0.5, 1, 5)
   
   # Melt data frame to prepare for plotting.
   TC.melt <- melt(TC.DF, id = "time.Ma")
@@ -177,7 +178,7 @@
   TC.melt <-  TC.melt[order(TC.melt$time.Ma),]
   
   # Make depth.km column numeric.
-  TC.melt$depth.km <- as.numeric(TC.melt$depth.km)  
+  TC.melt$depth.km <- as.numeric(as.character(TC.melt$depth.km))
   
   # Make time.Ma column into factors.
   TC.melt$time.Ma <- as.factor(TC.melt$time.Ma)  
@@ -193,7 +194,7 @@
               mapping = aes(x = Temperature.C,
                             y = depth.km,
                             color = time.Ma),
-              size = 0.75) +
+              size = 1.5) +
     
     # Make y axis plot in reverse order (0 depth at top of plot).
     scale_y_reverse() +
@@ -205,13 +206,13 @@
     theme_bw() +
     
     # Change color scale.
-    scale_color_brewer(palette = "YlOrRd") +
+    scale_color_brewer(palette = "Spectral") +
     
     # Change legend title.
     guides(color = guide_legend(title = "Time (Ma)")) +
     
     # Title plot and label axes.
     labs(title = "Finite difference model geotherms",  # Title plot.
-         x = "Temperature (Â°C)",  # Label x axis.
+         x = "Temperature (°C)",  # Label x axis.
          y = "Depth (km)")  # Label y axis.
-  
+
