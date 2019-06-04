@@ -1,6 +1,5 @@
 ---
-title: "2D Finite Difference Model"
-author: "Claire Harrigan"
+title: "Melt Sheet 2D"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output: html_document
 ---
@@ -63,6 +62,9 @@ output: html_document
   dt.max <- (dx ^ 2) / (6 * Kappa.min)  # [s] 
   dt.yr <- dt.max * 3.17098e-8 # [yr]
   dt <- dt.max
+  
+# Set HL (until it can be properly put into the equation)
+  HL <- 0
 ```
 
 ```{r InitializeTDistribution_plume}
@@ -126,21 +128,17 @@ output: html_document
 ### Initial Condtions  
   
 **Model Parameters:**  
-dt = `r round((dt * 3.17098e-8 / 1000000), digits = 3)` Myr)
+dt = `r round((dt * 3.17098e-8 / 1000000), digits = 3)` Myr  
 dx = `r round(dx, digits = 1)` m  
 dz = `r round(dz, digits = 1)` m  
 
-**Material Properties:**  
-Heat production, A = `r mean(A)` W/(m^3)   
-Thermal conductivity, k = `r mean(k)` W/(m K)  
-Density, rho = `r mean(rho)` kg/(m^3)  
-Heat capcity, Cp = `r mean(Cp)` J/(kg K)  
-Uplift, U = `r mean(U)` m/s  
-
 **Initial perterbation:**  
-circular intrusion with `r (r.plume / 1000)` km radius at an elevated temperature (1700°C)  
+rectangular intrusion with `r (meltsheetdiameter / 2 / 1000)` km radius and `r (meltsheetthickness / 1000)` km thickness at an elevated temperature of `r T.meltsheet`°C intrudes into rock with a geothermal gradient of `r a.Kkm` °C/km
 
 ```{r PlotInitialConditions_heatmap}
+
+meltsheetdiameter <- 20000  # [m]
+  meltsheetthickness <- 3000  # [m]
 # Plot initial conditions.
 
 # Load packages plotly and Rcolorbrewer for plotting.
@@ -149,11 +147,20 @@ circular intrusion with `r (r.plume / 1000)` km radius at an elevated temperatur
 
 # Make function for plotting.
   PlotlyMeltSheet <- function(temperatures) {
+    # Make matrix for hovertext labels.
+    text.matrix <- round(matrix(unlist(temperatures), 
+                                ncol = dim(temperatures)[2], 
+                                byrow = FALSE) - 273.15, 
+                         digits = 0)
+
+    # Make plot.
     plot_ly(x = ~(x / 1000),
             y = ~(z / 1000), 
             z = ~(temperatures - 273.15),
             type = "heatmap",
-            colors = rev(brewer.pal(9,"RdYlBu"))) %>%
+            colors = rev(brewer.pal(9,"RdYlBu")),
+            hoverinfo = "text",
+            text = text.matrix) %>%
       add_trace(y = ((z[[2]] - z[[1]])/ 2 / 1000),
                 type = "scatter",
                 mode = "lines",
@@ -167,70 +174,58 @@ circular intrusion with `r (r.plume / 1000)` km radius at an elevated temperatur
 
 # Plot initial condtions as a heatmap.
   PlotlyMeltSheet(T.0)
-
-  # plot_ly(x = ~(x / 1000),
-  #         y = ~(z / 1000), 
-  #         z = ~(T.0 - 273.15),
-  #         type = "heatmap",
-  #         colors = rev(brewer.pal(9,"RdYlBu"))) %>%
-  #   add_trace(y = ((z[[2]] - z[[1]])/ 2 / 1000),
-  #             type = "scatter",
-  #             mode = "lines",
-  #             line = list(color = "black")) %>%
-  #   colorbar(title = "Temperature (°C)",
-  #            limits = c(0, 3500))  %>%
-  # layout(xaxis = list(title = "Distance (km)"),
-  #        yaxis = list(title = "Depth (km)",
-  #                     autorange = "reversed"))
-  # 
-  
 ```
 
 ```{r Model_SetIterations}
-# Set a number of time steps.
-  n <- 10  # 100 iterations is about 5 myr
-
-# Initialize a list as a container for model returns at different times.
-  T.n  <- list()
-  
-# Place T.0 in the first position of the T.n list.
-  T.n[[1]] <- T.0
-
-# Solve the finite difference equation for n time steps.
-  
-  for (t in 1:n) {
+# Make a function to solve the finite difference equation for n time steps.
+  RunModel <- function(n.timesteps) {
     
-    # Initialize T.n[[t + 1]]
-    T.n[[t + 1]] <- matrix(data = NA,
-                           nrow = z.num,
-                           ncol = x.num)
+    # Initialize a list as a container for model returns at different times.
+    T.n  <- list()
     
-    # Calculate T for interior of T.n[[t + 1]] matrix.
-    for (i in 2:(x.num - 1)) {
-      for (j in 2:(z.num - 1)) {
+    # Place T.0 in the first position of the T.n list.
+    T.n[[1]] <- T.0
+    
+    for (t in 1:n.timesteps) {
+      
+      # Initialize T.n[[t + 1]]
+      T.n[[t + 1]] <- matrix(data = NA,
+                             nrow = z.num,
+                             ncol = x.num)
+      
+      # Calculate T for interior of T.n[[t + 1]] matrix.
+      for (i in 2:(x.num - 1)) {
+        for (j in 2:(z.num - 1)) {
+          
+          # Set constant T border.
+          T.n[[t + 1]][1, ] <- T.n[[t]][1, ]          # top
+          T.n[[t + 1]][z.num, ] <- T.n[[t]][z.num, ]  # bottom
+          T.n[[t + 1]][, 1] <- T.n[[t]][, 1]          # left
+          T.n[[t + 1]][, x.num] <- T.n[[t]][, x.num]  # right
+          
+          # Calculate T in the interior of the model
+          T.n[[t + 1]][i, j] <- T.n[[t]][i, j] +
             
-        # Set constant T border.
-        T.n[[t + 1]][1, ] <- T.n[[t]][1, ]          # top
-        T.n[[t + 1]][z.num, ] <- T.n[[t]][z.num, ]  # bottom
-        T.n[[t + 1]][, 1] <- T.n[[t]][, 1]          # left
-        T.n[[t + 1]][, x.num] <- T.n[[t]][, x.num]  # right
-        # T.n[[t + 1]][, 1] <- 1500 + (0.5 * -z[[i]] / 1000) + 273.15      # left
-        # T.n[[t + 1]][, x.num] <- 1500 + (0.5 * -z[[i]] / 1000) + 273.15  # right
-        
-        # Calculate T in the interior of the model
-        T.n[[t + 1]][i, j] <- T.n[[t]][i, j] +
-          
-          # conduction term
-          ((Kappa[i, j] * dt) * (((T.n[[t]][(i + 1), j] - (2 * T.n[[t]][i, j]) + T.n[[t]][(i - 1), j]) / (dx ^ 2)) + ((T.n[[t]][i, (j + 1)] - (2 * T.n[[t]][i, j]) + T.n[[t]][i, (j - 1)]) / (dz ^ 2) ))) +
-          
-          # heat production term
-          ((A[i, j] * dt) / (rho[i, j] * Cp[i, j])) +
-
-          # advection/uplift term
-          (U[i, j] * dt * ((T.n[[t]][i, (j + 1)] - T.n[[t]][i, j]) / dz))
+            # conduction term
+            ((Kappa[i, j] * dt) * (((T.n[[t]][(i + 1), j] - (2 * T.n[[t]][i, j]) + T.n[[t]][(i - 1), j]) / (dx ^ 2)) + ((T.n[[t]][i, (j + 1)] - (2 * T.n[[t]][i, j]) + T.n[[t]][i, (j - 1)]) / (dz ^ 2) ))) +
+            
+            # heat production term
+            ((A[i, j] * dt) / (rho[i, j] * Cp[i, j])) +
+            
+            # advection/uplift term
+            (U[i, j] * dt * ((T.n[[t]][i, (j + 1)] - T.n[[t]][i, j]) / dz)) +
+            
+            # latent heat term
+            HL
+        }
       }
     }
+    return(T.n)
   }
+  
+# Solve the finite difference equation for n time steps.
+  n <- 1
+  T.n <- RunModel(n)
 ```
 
 ### Results after `r eval(n)` iterations
@@ -243,125 +238,19 @@ Maximum temperature change between model run n = `r n` (time = `r round((n * dt 
   PlotlyMeltSheet(T.n[[length(T.n)]])
 ```
 
-
-```{r Model_SetIterations_2}
-# Set a number of time steps.
-  m <- 100  # 100 iterations is about 5 myr
-
-# Solve the finite difference equation for n time steps.
-  
-  for (t in n:(n + m)) {
-    
-    # Initialize T.n[[t + 1]]
-    T.n[[t + 1]] <- matrix(data = NA,
-                           nrow = z.num,
-                           ncol = x.num)
-    
-    # Calculate T for interior of T.n[[t + 1]] matrix.
-    for (i in 2:(x.num - 1)) {
-      for (j in 2:(z.num - 1)) {
-            
-        # Set constant T border.
-        T.n[[t + 1]][1, ] <- T.n[[t]][1, ]          # top
-        T.n[[t + 1]][z.num, ] <- T.n[[t]][z.num, ]  # bottom
-        T.n[[t + 1]][, 1] <- T.n[[t]][, 1]          # left
-        T.n[[t + 1]][, x.num] <- T.n[[t]][, x.num]  # right
-        # T.n[[t + 1]][, 1] <- 1500 + (0.5 * -z[[i]] / 1000) + 273.15      # left
-        # T.n[[t + 1]][, x.num] <- 1500 + (0.5 * -z[[i]] / 1000) + 273.15  # right
-        
-        # Calculate T in the interior of the model
-        T.n[[t + 1]][i, j] <- T.n[[t]][i, j] +
-          
-          # conduction term
-          ((Kappa[i, j] * dt) * (((T.n[[t]][(i + 1), j] - (2 * T.n[[t]][i, j]) + T.n[[t]][(i - 1), j]) / (dx ^ 2)) + ((T.n[[t]][i, (j + 1)] - (2 * T.n[[t]][i, j]) + T.n[[t]][i, (j - 1)]) / (dz ^ 2) ))) +
-          
-          # heat production term
-          ((A[i, j] * dt) / (rho[i, j] * Cp[i, j])) +
-
-          # advection/uplift term
-          (U[i, j] * dt * ((T.n[[t]][i, (j + 1)] - T.n[[t]][i, j]) / dz))
-      }
-    }
-  }
+```{r Setup_m_iterations}
+# Solve the finite difference equation for m time steps.
+  m <- 3
+  T.m <- RunModel(m)
 ```
 
-### Results after `r eval(n + m)` iterations
+### Results after `r eval(m)` iterations
 
-Maximum temperature change between model run n = `r (n + m)` (time = `r round(((n + m) * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
+Maximum temperature change between model run n = `r m` (time = `r round((m * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
 `r  round(((max(T.n[[length(T.n)]] - T.n[[1]])) - 273.15), digits = 2)` °C   
 
-```{r PlotModel_heatmap_2}
-# Plot model results after n iterations.
-  plot_ly(x = (x / 1000),
-          y = (z / 1000), 
-          z = T.n[[length(T.n)]] - 273.15,
-          type = "heatmap",
-          colors = "Greys") %>%
-          # colors = rev(brewer.pal(9,"RdYlBu"))) %>%
-    colorbar(title = "Temperature (°C)",
-             limits = c(1450, 1750))  %>%
-  layout(xaxis = list(title = "Distance (km)"),
-         yaxis = list(title = "Depth (km)",
-                      autorange = "reversed"))
+```{r PlotModel_heatmap_m}
+# Plot model results after m iterations.
+  PlotlyMeltSheet(T.m[[length(T.m)]])
 ```
 
-```{r Model_SetIterations_3}
-# Set a number of time steps.
-  o <- 100  # 100 iterations is about 5 myr
-
-# Solve the finite difference equation for n time steps.
-  
-  for (t in n:(n + m + o)) {
-    
-    # Initialize T.n[[t + 1]]
-    T.n[[t + 1]] <- matrix(data = NA,
-                           nrow = z.num,
-                           ncol = x.num)
-    
-    # Calculate T for interior of T.n[[t + 1]] matrix.
-    for (i in 2:(x.num - 1)) {
-      for (j in 2:(z.num - 1)) {
-            
-        # Set constant T border.
-        T.n[[t + 1]][1, ] <- T.n[[t]][1, ]          # top
-        T.n[[t + 1]][z.num, ] <- T.n[[t]][z.num, ]  # bottom
-        T.n[[t + 1]][, 1] <- T.n[[t]][, 1]          # left
-        T.n[[t + 1]][, x.num] <- T.n[[t]][, x.num]  # right
-        # T.n[[t + 1]][, 1] <- 1500 + (0.5 * -z[[i]] / 1000) + 273.15      # left
-        # T.n[[t + 1]][, x.num] <- 1500 + (0.5 * -z[[i]] / 1000) + 273.15  # right
-        
-        # Calculate T in the interior of the model
-        T.n[[t + 1]][i, j] <- T.n[[t]][i, j] +
-          
-          # conduction term
-          ((Kappa[i, j] * dt) * (((T.n[[t]][(i + 1), j] - (2 * T.n[[t]][i, j]) + T.n[[t]][(i - 1), j]) / (dx ^ 2)) + ((T.n[[t]][i, (j + 1)] - (2 * T.n[[t]][i, j]) + T.n[[t]][i, (j - 1)]) / (dz ^ 2) ))) +
-          
-          # heat production term
-          ((A[i, j] * dt) / (rho[i, j] * Cp[i, j])) +
-
-          # advection/uplift term
-          (U[i, j] * dt * ((T.n[[t]][i, (j + 1)] - T.n[[t]][i, j]) / dz))
-      }
-    }
-  }
-```
-
-### Results after `r eval(n + m + o)` iterations
-
-Maximum temperature change between model run n = `r (n + m + o)` (time = `r round(((n + m + o) * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
-`r  round(((max(T.n[[length(T.n)]] - T.n[[1]])) - 273.15), digits = 2)` °C   
-
-```{r PlotModel_heatmap_3}
-# Plot model results after n iterations.
-  plot_ly(x = (x / 1000),
-          y = (z / 1000), 
-          z = T.n[[length(T.n)]] - 273.15,
-          type = "heatmap",
-          colors = "Greys") %>%
-          # colors = rev(brewer.pal(9,"RdYlBu"))) %>%
-    colorbar(title = "Temperature (°C)",
-             limits = c(1450, 1750))  %>%
-  layout(xaxis = list(title = "Distance (km)"),
-         yaxis = list(title = "Depth (km)",
-                      autorange = "reversed"))
-```
