@@ -16,12 +16,16 @@ output: html_document
 
 ```{r ModelDimensions}
 # Define size of model domain.
+  # x.size <- 160000  # [m] 
+  # z.size <- 15000  # [m] 
   x.size <- 100000  # [m] 
   z.size <- 100000  # [m] 
-
+  
 # Set resolution (number of nodes).  
-  x.num <- 40 
-  z.num <- 40 
+  # x.num <- 160 
+  # z.num <- 15 
+  x.num <- 100 
+  z.num <- 100
   
 # Define stepsize.
   dx <- x.size / (x.num - 1)  # [m] 
@@ -34,16 +38,16 @@ output: html_document
 
 ```{r Constants}
 # Define material properties, initialize arrays.
-  k <- matrix(data = 3.0,      # thermal conductivity, [W/(m*K)]
+  k <- matrix(data = 2.5,      # thermal conductivity, [W/(m*K)]
               nrow = z.num,
               ncol = x.num)  
-  A <- matrix(data = 2.2e-8,   # heat production, [W/(m^3)] (1e-6)
+  A <- matrix(data = 0,   # heat production, [W/(m^3)] (1e-6)
               nrow = z.num,
               ncol = x.num)  
-  rho <- matrix(data = 3300,   # density, [kg/(m^3)] (2800)
+  rho <- matrix(data = 2700,   # density, [kg/(m^3)] (2800)
                 nrow = z.num,
                 ncol = x.num)
-  Cp <- matrix(data = 1293,    # heat capacity, [J/(kg*K)] (1000)
+  Cp <- matrix(data = 1000,    # heat capacity, [J/(kg*K)] (1000)
                nrow = z.num,
                ncol = x.num)
   Kappa <- k / (rho * Cp)      # [(m^2)/s]
@@ -51,11 +55,11 @@ output: html_document
   U <- matrix(data = 0,        # uplift, [m/s]
               nrow = z.num,
               ncol = x.num)
-  H <- matrix(data = 0,        # latent heat production, value? units?
-              nrow = z.num,
-              ncol = x.num)  
+  # H <- matrix(data = 0,        # latent heat production, value? units?
+  #             nrow = z.num,
+  #             ncol = x.num)  
   # Input geothermal gradient in K/km.
-  a.Kkm <- 20  # [K/km]
+  a.Kkm <- 13  # [K/km]
   a <- a.Kkm / 1000  # [K/m]
                    
 # Define time step.
@@ -71,7 +75,7 @@ output: html_document
 # Set up an initial condition of a circular plume at an elevated temperature.
   
 # Initialize a matrix for initial temperature conditions.
-  T.0 <- matrix(data = 900,
+  T.0 <- matrix(data = 0,
                 nrow = z.num,
                 ncol = x.num)
 
@@ -90,7 +94,7 @@ output: html_document
 # sheet.
   # Set dimensions of melt sheet.
   meltsheetdiameter <- 20000  # [m]
-  meltsheetthickness <- 3000  # [m]
+  meltsheetthickness <- 1000  # [m]
   # If the melt sheet is centered in the x direction in the model, find the 
   # position in meters along the x axis.
   xstart.melt <- mean(x) - (meltsheetdiameter / 2)  # x position, [m]
@@ -107,7 +111,7 @@ output: html_document
   zend.melt.index <- which(abs(z - zend.melt) == min(abs(z - zend.melt)))
   
   # Set temperature of melt sheet.
-  T.meltsheet <- 3500  # [°C]
+  T.meltsheet <- 1700  # [°C]
   
   # Emplace melt sheet. Set material properties of melt sheet.
   for (i in zstart.melt.index:zend.melt.index) {
@@ -136,9 +140,6 @@ dz = `r round(dz, digits = 1)` m
 rectangular intrusion with `r (meltsheetdiameter / 2 / 1000)` km radius and `r (meltsheetthickness / 1000)` km thickness at an elevated temperature of `r T.meltsheet`°C intrudes into rock with a geothermal gradient of `r a.Kkm` °C/km
 
 ```{r PlotInitialConditions_heatmap}
-
-meltsheetdiameter <- 20000  # [m]
-  meltsheetthickness <- 3000  # [m]
 # Plot initial conditions.
 
 # Load packages plotly and Rcolorbrewer for plotting.
@@ -166,7 +167,7 @@ meltsheetdiameter <- 20000  # [m]
                 mode = "lines",
                 line = list(color = "black")) %>%
       colorbar(title = "Temperature (°C)",
-               limits = c(0, 3500))  %>%
+               limits = c(0, 2000))  %>%
       layout(xaxis = list(title = "Distance (km)"),
              yaxis = list(title = "Depth (km)",
                           autorange = "reversed"))
@@ -224,7 +225,7 @@ meltsheetdiameter <- 20000  # [m]
   }
   
 # Solve the finite difference equation for n time steps.
-  n <- 1
+  n <- 3
   T.n <- RunModel(n)
 ```
 
@@ -240,17 +241,33 @@ Maximum temperature change between model run n = `r n` (time = `r round((n * dt 
 
 ```{r Setup_m_iterations}
 # Solve the finite difference equation for m time steps.
-  m <- 3
+  m <- 5
   T.m <- RunModel(m)
 ```
 
 ### Results after `r eval(m)` iterations
 
 Maximum temperature change between model run n = `r m` (time = `r round((m * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
-`r  round(((max(T.n[[length(T.n)]] - T.n[[1]])) - 273.15), digits = 2)` °C   
+`r  round(((max(T.m[[length(T.m)]] - T.m[[1]])) - 273.15), digits = 2)` °C   
 
 ```{r PlotModel_heatmap_m}
 # Plot model results after m iterations.
   PlotlyMeltSheet(T.m[[length(T.m)]])
 ```
 
+
+```{r Setup_o_iterations}
+# Solve the finite difference equation for m time steps.
+  o <- 9
+  T.o <- RunModel(o)
+```
+
+### Results after `r eval(o)` iterations
+
+Maximum temperature change between model run n = `r o` (time = `r round((o * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
+`r  round(((max(T.o[[length(T.o)]] - T.o[[1]])) - 273.15), digits = 2)` °C   
+
+```{r PlotModel_heatmap_o}
+# Plot model results after m iterations.
+  PlotlyMeltSheet(T.o[[length(T.o)]])
+```
