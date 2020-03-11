@@ -8,6 +8,12 @@
 rm(list = ls())
 
 # Install required packages.
+install.packages("lattice")
+library(lattice)
+# install.packages("RColorBrewer")
+# library(RColorBrewer)
+# install.packages("ggplot2")
+# library(ggplot2)
 
 
 ## SET MODEL DIMENSIONS --------------------------------------------------------
@@ -30,8 +36,6 @@ z <- seq(from = 0, to = z.size, by = dz)  # [m]
 
 
 ## SET CONSTANTS ---------------------------------------------------------------
-
-```{r Constants}
 # Define material properties, initialize arrays.
 
 L <- 421000  # latent heat of fusion of diopside, [J/kg] 
@@ -92,10 +96,11 @@ a <- a.Kkm / 1000  # [K/m]
 dt.max <- (dx ^ 2) / (6 * Kappa.min)  # [s] 
 dt.yr <- dt.max * 3.17098e-8 # [yr]
 dt <- dt.max
-```
 
-```{r InitializeTDistribution_plume}
-# Set up an initial condition of a melt sheet at an elevated temperature.
+
+## INITIAL T DISTRIBUTION ------------------------------------------------------
+# Set up an initial condition of an instantaneously emplaced melt sheet at an 
+# elevated temperature.
 
 # Initialize a matrix for initial temperature conditions.
 T.0 <- matrix(data = 0,
@@ -154,89 +159,30 @@ for (i in zstart.melt.index:zend.melt.index) {
   }
 }
 
-# Clean up.
+# Clean up extra variables.
 rm(i, j)
-```
 
-### Initial Condtions  
 
-**Model Parameters:**  
-  dt = `r round((dt * 3.17098e-8 / 1000000), digits = 3)` Myr  
-dx = `r round(dx, digits = 1)` m  
-dz = `r round(dz, digits = 1)` m  
+## PLOT INITIAL CONDITIONS -----------------------------------------------------
+# Plot initial conditions of model.
 
-**Initial perterbation:**  
-  rectangular intrusion with `r (meltsheetdiameter / 2 / 1000)` km radius and `r (meltsheetthickness / 1000)` km thickness at an elevated temperature of `r T.meltsheet`°C intrudes into rock with a geothermal gradient of `r a.Kkm` °C/km
+# Plot matricies as constants to check values.
+levelplot(A)
+levelplot(Cp.0)
+levelplot(Cp.initial)
+levelplot(Cp.prime)
+levelplot(k)
+levelplot(Kappa)
+levelplot(rho)
+levelplot(U)
 
-```{r PlotInitialConditions_heatmap}
-# Plot initial conditions.
-
-# Load packages plotly and Rcolorbrewer for plotting. (GGK added next four lines on 02July2019 as issue with library(plotly) wiht my paths)
-# myPaths <- .libPaths()
-# myPaths <- c(myPaths, "C:/R stuff")
-# .libPaths(myPaths)
-
-library(ggplot2)  
-library(plotly)
-library(RColorBrewer)
-
-# Make function for plotting.
-PlotlyMeltSheet <- function(temperatures) {
-  # Make matrix for hovertext labels.
-  text.matrix <- round(matrix(unlist(temperatures), 
-                              ncol = dim(temperatures)[2], 
-                              byrow = FALSE) - 273.15, 
-                       digits = 0)
-  
-  # Make plot.
-  plot_ly(x = ~(x / 1000),
-          y = ~(z / 1000), 
-          z = ~(temperatures - 273.15),
-          type = "heatmap",
-          colors = rev(brewer.pal(9,"RdYlBu")),
-          hoverinfo = "text",
-          text = text.matrix) %>%
-    add_trace(y = ((z[[2]] - z[[1]])/ 2 / 1000),
-              type = "scatter",
-              mode = "lines",
-              line = list(color = "black")) %>%
-    colorbar(title = "Temperature (°C)",
-             limits = c(0, 2000))  %>%
-    layout(xaxis = list(title = "Distance (km)"),
-           yaxis = list(title = "Depth (km)",
-                        autorange = "reversed"))
-}
-
-# Plot initial condtions as a heatmap.
-PlotlyMeltSheet(T.0)
-```
-
-```{r StaticPlot}
-# Plot a matrix as a heatmap with ggplot.
-# Load required packages.
-library(reshape2)
-library(ggplot2)
-
-# Make plot
-ggplot(melt(T.0), 
-       aes(Var1,
-           Var2,
-           fill = value)) + 
-  geom_raster()
-
-# Plot a matrix as a heatmap with base R.
-# heatmap(T.0) # Doesn't work
-
-# Plot a matrix as a heatmap with the package lattice.
-install.packages("lattice")
-library(lattice)
+# Plot the initial temperature matrix as a heatmap with the package lattice.
 levelplot(T.0)
-```
 
 
-
-```{r Model_SetIterations}
+## CREATE FUNCTION OF THERMAL MODEL --------------------------------------------
 # Make a function to solve the finite difference equation for n time steps.
+
 RunModel <- function(n.timesteps) {
   
   # Initialize a list as a container for model returns at different times.
@@ -301,52 +247,21 @@ RunModel <- function(n.timesteps) {
   return(objects.to.return)
 }
 
+
+## RUN MODEL -------------------------------------------------------------------
+
 # Solve the finite difference equation for n time steps.
-n <- 2
+n <- 3
 model.results <- RunModel(n)
 T.n <- model.results$T.n
 Cp <- model.results$Cp
-```
 
-### Results after `r eval(n)` iterations
 
-Maximum temperature change between model run n = `r n` (time = `r round((n * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
-  `r  round(((max(T.n[[length(T.n)]] - T.n[[1]])) - 273.15), digits = 2)` °C   
+## PLOT MODEL RESULTS ----------------------------------------------------------
 
-```{r PlotModel_heatmap}
-# Plot model results after n iterations.
-PlotlyMeltSheet(T.n[[length(T.n)]])
-```
-
-```{r Setup_m_iterations}
 # Solve the finite difference equation for m time steps.
 m <- 5
 T.m <- RunModel(m)
-```
 
-### Results after `r eval(m)` iterations
-
-Maximum temperature change between model run n = `r m` (time = `r round((m * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
-  `r  round(((max(T.m[[length(T.m)]] - T.m[[1]])) - 273.15), digits = 2)` °C   
-
-```{r PlotModel_heatmap_m}
 # Plot model results after m iterations.
 PlotlyMeltSheet(T.m[[length(T.m)]])
-```
-
-
-```{r Setup_o_iterations}
-# Solve the finite difference equation for m time steps.
-o <- 9
-T.o <- RunModel(o)
-```
-
-### Results after `r eval(o)` iterations
-
-Maximum temperature change between model run n = `r o` (time = `r round((o * dt * 3.17098e-8 / 1000000), digits = 2)` Myr) and initial condition (time = 0 Myr):  
-  `r  round(((max(T.o[[length(T.o)]] - T.o[[1]])) - 273.15), digits = 2)` °C   
-
-```{r PlotModel_heatmap_o}
-# Plot model results after m iterations.
-PlotlyMeltSheet(T.o[[length(T.o)]])
-```
