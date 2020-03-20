@@ -1,19 +1,20 @@
 # This script creates a finite difference model of the cooling of a melt sheet
 # caused by an impact.
-# Updated 2020.03.12 CH
+# Updated 2020.03.18 CH
 
 ## SETUP -----------------------------------------------------------------------
 
 # Clear all from workspace/environment.
 rm(list = ls())
 
-# Install required packages.
-install.packages("lattice")
+# Install and load required packages.
+# Install and load lattice for plotting results.
+if(!require(lattice)){install.packages("lattice")}
 library(lattice)
-# install.packages("RColorBrewer")
-# library(RColorBrewer)
-# install.packages("ggplot2")
-# library(ggplot2)
+# Install and load RColorBrewer for plot color schemes.
+if(!require(RColorBrewer)){install.packages("RColorBrewer")}
+library(RColorBrewer)
+
 
 
 ## SET MODEL DIMENSIONS --------------------------------------------------------
@@ -36,7 +37,8 @@ z <- seq(from = 0, to = z.size, by = dz)  # [m]
 
 
 ## SET CONSTANTS ---------------------------------------------------------------
-# Define material properties, initialize arrays.
+# Define material properties, initialize arrays. 
+# All temperatures in °C should be converted to K.
 
 L <- 421000  # latent heat of fusion of diopside, [J/kg] 
 # Suggested value: 421000 J/kg; Abramov and Kring (2007)
@@ -109,11 +111,12 @@ T.0 <- matrix(data = 0,
               nrow = x.num,  
               ncol = z.num)
 
-# Set the top row to be air temperature.
+# Set the top row of the model to be the air temperature.
 # Choose a value for the air temperature.
-T.surface <- 25  # [°C]
+T.surface.C <- 25  # surface temperature, [°C]
+T.surface <- T.surface.C + 273.15  # surface temperature, [K]
 # Assign the first row of the initial matrix to be the air temperature.
-T.0[ , 1] <- T.surface + 273.15 # [°C + 273.15 to convert to K] 
+T.0[ , 1] <- T.surface  # [K] 
 
 # Make a geotherm for the initialization matrix.
 for (i in 2:dim(T.0)[2]) {
@@ -124,10 +127,10 @@ for (i in 2:dim(T.0)[2]) {
 # sheet.
 # Set dimensions of melt sheet.
 meltsheetdiameter <- 30000  # [m]
-meltsheetvolume <- 1000 # [km^3]
+meltsheetvolume <- 1000  # [km^3]
 meltsheetvolume.m3 <- meltsheetvolume * (1000^3)
 meltsheetthickness <- meltsheetvolume.m3 / 
-                      (((meltsheetdiameter / 2)^2) * 3.14)  # [m]
+                      (((meltsheetdiameter / 2)^2) * pi)  # [m]
 # If the melt sheet is centered in the x direction in the model, find the 
 # position in meters along the x axis.
 xstart.melt <- mean(x) - (meltsheetdiameter / 2)  # x position, [m]
@@ -144,56 +147,30 @@ zend.melt <- z[2] + meltsheetthickness
 zend.melt.index <- round(zend.melt / dz, digits = 0)
 
 # Set temperature of melt sheet.
-T.meltsheet <- 1700 + 273.15 # [°C + 273.15 to convert to K] 
+T.meltsheet.C <- 1700  # temperature of melt sheet, [°C]
+T.meltsheet <- T.meltsheet.C + 273.15  # temperature of melt sheet, [°C]
   # Suggested value: 1700°C; Abramov and Kring (2007)
 
 # Elevate geotherm at central uplift.
-# Set the temperature at the center and outer edge of the uplift.
-T.uplift <- 900 + 273.15 # [°C + 273.15 to convert to K] 
-T.edge <- 500 + 273.15 # [°C + 273.15 to convert to K] 
-# Set the diameter of the central uplift to be 10% larger than the melt sheet 
-# diameter on either side.
-uplift.edge.low <- xstart.melt.index - 0.1 * (meltsheetdiameter / 1000)
-uplift.edge.high <- xend.melt.index + 0.1 * (meltsheetdiameter / 1000)
-
-# # Optional simple uplift temperature gradient.
-# for (j in uplift.edge.low:uplift.edge.high) {
-#   for (i in 2:z.num){
-#     T.0[j, i] <- T.uplift
-#   }
-# }
+# Set the temperature with which to raise the geotherm everywhere in the central
+# uplift. 
+# The height of uplift is dependent on the size of the crater. 40 km of uplift
+# is an estimate based on the size of the crater associated with a 30 km in 
+# diameter melt sheet.
+height.of.uplift <- 40  # amount of uplift, [km]
+T.uplift <- height.of.uplift * a.Kkm
 
 # Optional simple uplift of the geotherm temperature gradient.
-for (j in uplift.edge.low:uplift.edge.high) {
+for (j in xstart.melt.index:xend.melt.index) {
   for (i in 2:z.num){
-    T.0[j, i] <- T.0[j, i] + 480
+    T.0[j, i] <- T.0[j, i] + T.uplift
   }
 }
-
-
-# # For more complex uplift temperature gradient:
-# # Set up quadratic.
-# QA <- (T.edge + T.uplift) / (uplift.edge.low^2 + (median(x) / 1000)^2 + 
-#       (((uplift.edge.low^2 - uplift.edge.high^2) / 
-#       (uplift.edge.high - uplift.edge.low)) * (uplift.edge.low + 
-#       (median(x) / 1000))))
-# QB <- QA * (uplift.edge.low^2 - uplift.edge.high^2) / 
-#       (uplift.edge.high - uplift.edge.low)
-# QC <- (QA * (median(x) / 1000)^2) + ((QA * (uplift.edge.low^2 - 
-#       uplift.edge.high^2) * (median(x) / 1000)) / (uplift.edge.high - 
-#       uplift.edge.low)) - (T.uplift)
-# 
-# # Calculate temperatures for central uplift.
-# for (j in uplift.edge.low:uplift.edge.high) {
-#   for (i in 2:z.num) {
-#     T.0[j, ] <- (QA * (x[j] / 1000)^2) + (QB * (x[j] / 1000)) + QC
-#   }
-# }
 
 # Emplace melt sheet. Set material properties of melt sheet.
 for (i in xstart.melt.index:xend.melt.index) {
   for (j in zstart.melt.index:zend.melt.index) {
-    T.0[i, j] <- T.meltsheet + 273.15
+    T.0[i, j] <- T.meltsheet
     # k[i, j]     <- 3.0    # thermal conductivity, [W/(m*K)]
     # A[i, j]     <- 1e-6   # heat production, [W/(m^3)]
     # rho[i, j]   <- 3300   # density, [kg/(m^3)]
@@ -205,14 +182,6 @@ for (i in xstart.melt.index:xend.melt.index) {
     # Kappa[i, j] <- k[i, j] / (rho[i, j] * Cp[i, j])  # [(m^2)/s]
   }
 }
-
-# Clean up extra variables.
-rm(i, j, QA, QB, QC)
-
-## PLOT INITIAL CONDITIONS -----------------------------------------------------
-
-# Plot the initial temperature matrix as a heatmap with the package lattice.
-levelplot(T.0)
 
 
 ## CREATE FUNCTION OF THERMAL MODEL --------------------------------------------
@@ -294,69 +263,72 @@ RunModel <- function(n.timesteps) {
 ## RUN MODEL -------------------------------------------------------------------
 
 # Solve the finite difference equation for n time steps.
-n <- 10
-model.results <- RunModel(n)
-T.n <- model.results$T.n
-Cp <- model.results$Cp
-
-# 6 min to do 1000 model runs
-
-## PLOT MODEL RESULTS ----------------------------------------------------------
-
-# Plot model results.
-levelplot(T.n[[1]])
-levelplot(T.n[[25]])
-levelplot(T.n[[50]])
-levelplot(T.n[[75]])
-levelplot(T.n[[100]])
-levelplot(T.n[[200]])
-levelplot(T.n[[300]])
-levelplot(T.n[[400]])
-levelplot(T.n[[500]])
-levelplot(T.n[[600]])
-levelplot(T.n[[700]])
-levelplot(T.n[[800]])
-levelplot(T.n[[900]])
-levelplot(T.n[[1000]])
+n <- 5  # Set number of time steps.
+model.results <- RunModel(n)  # Run model for n timesteps.
+T.n <- model.results$T.n  # Save the model results of temperature, [K]
 
 
-# Make plotting function.
+## PLOT 2D MODEL RESULTS -------------------------------------------------------
+
+# Make plotting function to plot model results in °C.
 levelplotCH <- function(InputMatrix, 
                         plot.title = "",
+                        x.axis.in.m = x,
+                        z.axis.in.m = z,
                         xnum = x.num,
                         znum = z.num,
                         xval = x.size,
                         zval = z.size) {
   
-  OutputPlot <- levelplot(InputMatrix - 273.15,
+  # Rename columns and rows so scales of x and y axes make sense.
+  # rownames(InputMatrix) <- x.axis.in.km
+  # colnames(InputMatrix) <- z.axis.in.km 
+  
+  # Make plot.
+  # OutputPlot <- levelplot(InputMatrix ~ (x.axis.in.m / 1000) * (z.axis.in.m / 1000),
+                 
+                          OutputPlot <- levelplot((InputMatrix) ~ (x.axis.in.m / 1000) * (z.axis.in.m / 1000),
+                                                  
+                          # OutputPlot <- levelplot(InputMatrix - 273.15,
+                                                  
+                          
+                          
+                          # For the functions documented here, the formula is generally of the form y ~ x | g1 * g2 * ... (or equivalently, y ~ x | g1 + g2 + ...), indicating that plots of y (on the y-axis) versus x (on the x-axis) should be produced conditional on the variables g1, g2, .... Here x and y are the primary variables, and g1, g2, ... are the conditioning variables. The conditioning variables may be omitted to give a formula of the form y ~ x, in which case the plot will consist of a single panel with the full dataset. The formula can also involve expressions, e.g., sqrt(), log(), etc. See the data argument below for rules regarding evaluation of the terms in the formula.
+                          
+                          # or the formula method, a formula of the form z ~ x * y | g1 * g2 * ..., where z is a numeric response, and x, y are numeric values evaluated on a rectangular grid. g1, g2, ... are optional conditional variables, and must be either factors or shingles if present.
                           
                           # Change axes.
                           # xlim = c(0, xsize),
-                          ylim = c(znum, 0),
+                          # ylim = c((max(z)), 0),
                           # row.values = zval,
                           # column.values = xval,
                           # 
                           # Plot labels.
-                          xlab = "distance (number of nodes)", # x axis label
-                          ylab = "depth (numbner of nodes)", # y axis label
+                          xlab = "distance (km)", # x axis label
+                          ylab = "depth (km)", # y axis label
                           # xlab = "distance", # x axis label
                           # ylab = "depth", # y axis label
                           main = plot.title, # plot title
+                          # key=list(title="Three Cylinder Options"),
                           
                           # Change the look of the plot.
                           # aspect = 1, # change aspect ratio of plot
-                          contour = T, # add concour lines
+                          contour = T, # add contour lines
+                          # Change the color scheme.
+                          col.regions = colorRampPalette(brewer.pal(9, 'Purples')),
+                          # colorkey = list(labels = "T °C"),
+                          # scales = list(log = "e"),
                           
                           # Adjust colorbar.
-                          # colorkey = c(400, 1200), # set colorbar limits
-                          at = c(seq(0, 1800, length.out = 50)),
-                          cuts = 10) # change the number of colors in colorbar
+                          # Set colorbar limits
+                          at = c(seq(0, 1800, length.out = 50))) 
   return(OutputPlot)
 }
 
-# Testing plotting function.
-levelplotCH(T.0)
+# Test plotting function.
 levelplotCH(T.n[[1]])
+
+
 levelplotCH(T.n[[5]])
 levelplotCH(T.n[[25]])
 levelplotCH(T.n[[50]])
@@ -366,4 +338,44 @@ levelplotCH(T.n[[100]])
 # Possible function inputs.
 # plot.title = paste((round(dt.yr * 5, digits = 0)), " yrs")
 
-z ~ x * y
+
+
+# Using base R plotting
+
+MeltSheetPlot <- function(IterationNumber) {
+  # Make plot.
+        # Input data into plot.
+  image(x = x / 1000,  # Set x axis scale.
+        y = z / 1000,  # Set y axis scale.
+        z = (T.n[[IterationNumber]]) - 273.15,  # Set values to be plotted.
+        
+        # Set x and y axes and labels.
+        xlim = c(0, (x.size / 1000)),
+        ylim = c((z.size / 1000), 0),  # Make sure depth axis is reversed.
+        xlab = "Distance (km)",
+        ylab = "Depth (km)",
+        
+        # Set title.
+        main = paste("t =", round(((IterationNumber - 1) * dt.yr), digits = 0), "years", sep = " "),
+        
+        # Set limits of color range.
+        zlim = c(0, 1800),
+        
+        # Plot in grayscale.
+        col = gray.colors(10, start = 0.9, end = 0.2))
+  legend(grconvertX(0.5, "device"), grconvertY(1, "device"), 
+         c("0",".5","1"), fill = gray.colors(10, start = 0.9, end = 0.2), xpd = NA)
+}
+
+
+MeltSheetPlot(1)
+
+
+
+
+## PLOT 1D MODEL RESULTS -------------------------------------------------------
+
+# Extract 1D results through center of 2D model results.
+
+
+# Plot 1D results.
