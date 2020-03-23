@@ -262,7 +262,7 @@ RunModel <- function(n.timesteps) {
 ## RUN MODEL -------------------------------------------------------------------
 
 # Solve the finite difference equation for n time steps.
-n <- 5  # Set number of time steps.
+n <- 500  # Set number of time steps.
 model.results <- RunModel(n)  # Run model for n timesteps.
 T.n <- model.results$T.n  # Save the model results of temperature, [K]
 
@@ -279,6 +279,7 @@ levelplotCH <- function(IterationNumber,
                         xval = x.size,
                         zval = z.size) {
   
+  # Specify dataset by the model iteration number.
   InputMatrix <- T.n[[IterationNumber]]
                                                   
   OutputPlot <- levelplot(InputMatrix - 273.15,
@@ -301,14 +302,16 @@ levelplotCH <- function(IterationNumber,
                           main = paste("t =", 
                                        round(((IterationNumber - 1) * dtyr), 
                                              digits = 0), 
-                                       "years", 
+                                       "years, model iteration =",
+                                       IterationNumber - 1,
                                        sep = " "),
                           
                           # Change the look of the plot.
                           aspect = zval/xval, # change aspect ratio of plot
                           # Change the color scheme.
-                          col.regions = colorRampPalette(brewer.pal(9, 
-                                                                    'Purples')),
+                          col.regions = colorRampPalette(brewer.pal(9,
+                                        'Purples')),
+                                        # 'Greys')),  # Plot in grayscale.
 
                           # Adjust colorbar and contour lines.
                           # contour = T,  # Add contour lines.
@@ -320,92 +323,171 @@ levelplotCH <- function(IterationNumber,
   return(OutputPlot)
 }
 
-# Test plotting function.
+# Plot results.
 levelplotCH(1)
-levelplotCH(4)
+levelplotCH(26)
+levelplotCH(51)
+levelplotCH(101)
+levelplotCH(126)
+levelplotCH(151)
+levelplotCH(176)
+levelplotCH(201)
+levelplotCH(500)
 
+# Output plots as a PDF.
+# Page 1 (0, 25, 50, 100)
+pdf("/Users/claireharrigan/Desktop/MeltSheetPlots/MeltSheet_2Dplots_0-25-50-100.pdf",
+  width = 8.5, height = 11,
+  useDingbats = FALSE)
+print(levelplotCH(1), split = c(1,1,1,4), more = T) 
+print(levelplotCH(26), split = c(1,2,1,4), more = T)
+print(levelplotCH(51), split = c(1,3,1,4), more = T)
+print(levelplotCH(101), split = c(1,4,1,4))
+dev.off()
 
+# Page 2 (125, 150, 175, 200)
+pdf("/Users/claireharrigan/Desktop/MeltSheetPlots/MeltSheet_2Dplots_125-150-175-200.pdf",
+    width = 8.5, height = 11,
+    useDingbats = FALSE)
+print(levelplotCH(126), split = c(1,1,1,4), more = T) 
+print(levelplotCH(151), split = c(1,2,1,4), more = T)
+print(levelplotCH(176), split = c(1,3,1,4), more = T)
+print(levelplotCH(201), split = c(1,4,1,4))
+dev.off()
 
-# Plot results using base R plotting.
-
-# Function for making a colorbar.
-# Modified from Aurélien Madouasse, https://aurelienmadouasse.wordpress.com/2012/01/13/legend-for-a-continuous-color-scale-in-r/
-
-legend.col <- function(col, lev){
-  
-  opar <- par
-  
-  n <- length(col)
-  
-  bx <- par("usr")
-  
-  box.cx <- c(bx[2] + (bx[2] - bx[1]) / 1000,
-              bx[2] + (bx[2] - bx[1]) / 1000 + (bx[2] - bx[1]) / 50)
-  box.cy <- c(bx[3], bx[3])
-  box.sy <- (bx[4] - bx[3]) / n
-  
-  xx <- rep(box.cx, each = 2)
-  
-  par(xpd = TRUE)
-  for(i in 1:n){
-    
-    yy <- c(box.cy[1] + (box.sy * (i - 1)),
-            box.cy[1] + (box.sy * (i)),
-            box.cy[1] + (box.sy * (i)),
-            box.cy[1] + (box.sy * (i - 1)))
-    polygon(xx, yy, col = col[i], border = col[i])
-    
-  }
-  par(new = TRUE)
-  plot(0, 0, type = "n",
-       ylim = c(min(lev), max(lev)),
-       yaxt = "n", ylab = "",
-       xaxt = "n", xlab = "",
-       frame.plot = FALSE)
-  axis(side = 4, las = 2, tick = FALSE, line = .25)
-  par <- opar
-}
-
-
-MeltSheetPlot <- function(IterationNumber) {
-  # Make plot.
-        # Input data into plot.
-  image(x = x / 1000,  # Set x axis scale.
-        y = z / 1000,  # Set y axis scale.
-        z = (T.n[[IterationNumber]]) - 273.15,  # Set values to be plotted.
-        
-        # Set x and y axes and labels.
-        xlim = c(0, (x.size / 1000)),
-        ylim = c((z.size / 1000), 0),  # Make sure depth axis is reversed.
-        xlab = "Distance (km)",
-        ylab = "Depth (km)",
-        
-        # Set title.
-        main = paste("t =", round(((IterationNumber - 1) * dt.yr), digits = 0), "years", sep = " "),
-        
-        # Set limits of color range.
-        zlim = c(0, 1800),
-        
-        # Plot in grayscale.
-        col = gray.colors(10, start = 0.9, end = 0.2))
-  
-  # Add colorbar.
-  legend.col(col = gray.colors(10, start = 0.9, end = 0.2), 
-             lev = c(0, 1800))
-}
-
-
-MeltSheetPlot(4)
-
-
-
-
-
-
+# Page 3 (225, 250, 275, 300)
+pdf("/Users/claireharrigan/Desktop/MeltSheetPlots/MeltSheet_2Dplots_225-250-275-300.pdf",
+    width = 8.5, height = 11,
+    useDingbats = FALSE)
+print(levelplotCH(226), split = c(1,1,1,4), more = T) 
+print(levelplotCH(251), split = c(1,2,1,4), more = T)
+print(levelplotCH(276), split = c(1,3,1,4), more = T)
+print(levelplotCH(301), split = c(1,4,1,4))
+dev.off()
 
 ## PLOT 1D MODEL RESULTS -------------------------------------------------------
 
 # Extract 1D results through center of 2D model results.
 
+# Initialize list to hold center values from T.n matricies.
+T.1D <- list()
+# Iterate through T.n list, extract T values through center of melt sheet, save
+# in list T.1D.
+for (i in 1:length(T.n)) {
+  T.1D[[i]] <- T.n[[i]][(x.num / 2), ]
+}
 
-# Plot 1D results.
+# Extract limited results to plot.
+T.1D.lim <- list()
+T.1D.lim[[1]] <- T.1D[[1]]
+T.1D.lim[[2]] <- T.1D[[26]]
+T.1D.lim[[3]] <- T.1D[[51]]
+T.1D.lim[[4]] <- T.1D[[101]]
+T.1D.lim[[5]] <- T.1D[[126]]
+T.1D.lim[[6]] <- T.1D[[151]]
+T.1D.lim[[7]] <- T.1D[[176]]
+T.1D.lim[[8]] <- T.1D[[201]]
+T.1D.lim[[9]] <- T.1D[[226]]
+T.1D.lim[[10]] <- T.1D[[251]]
+T.1D.lim[[11]] <- T.1D[[276]]
+T.1D.lim[[12]] <- T.1D[[301]]
+
+### Lattice not working yet ----
+# # Plot 1D results using the lattice package.
+# # Save center lines to one matrix to plot the whole matrix at once.
+# T.1D.DF <- data.frame()  # Initialize matrix.
+# T.1D.DF <- t(do.call(rbind, T.1D))
+# colnames(T.1D.DF) <- paste("I")
+# # Make plot.
+# xyplot((z / 1000) ~ (T.1D[[1]] - 273.15),
+#        ylim = c(10, 0),
+#        type = "l",
+#        lwd = 1.5) 
+# xyplot(seq(from = 1, to = dim(T.1D.DF)[1], by = 1) ~ T.1D.DF$V1, data = T.1D.DF, type = "l", auto.key = TRUE)
+# 
+# df <- data.frame(a = runif(10), b = runif(10), c = runif(10), x = 1:10)
+# xyplot(x ~ a + b + c, data = df, type = "l", auto.key = TRUE)
+# 
+
+
+
+# Plot all 1D results using base R. ----
+# Set axis limits.
+xrange <- range(0, 1800)  # T range
+yrange <- range(0, 10)  # depth in km
+# Make plot.
+plot.new()  # Start new plot.
+plot(xrange, yrange,
+     type = "n",
+     xlab = "Temperature (°C)",
+     ylab = "Depth (km)",
+     ylim = c(10, 0),)
+# Set number of colors based on number of model results being plotted.
+colors <- rainbow(length(T.1D))  # Set number of colors.
+# Add lines.
+for (i in 1:length(T.1D)) {
+  tempprofile <- T.1D[[i]] -273.15
+  lines(tempprofile, z / 1000,
+        type = "l",
+        lwd = 1.5,
+        col = colors[i],
+        lty = "solid")
+}
+# Add title.
+title("1D model of temperature through center of the melt sheet")
+# Add a legend. 
+# legend(1600, 8, 1:length(T.1D), cex=0.8, col=colors, lty = "solid", title = "Model run")
+# Add vertical lunes for liquidus and solidus.
+lines(c(T.liquidus.C, T.liquidus.C), c(0, (z.size / 1000)))
+lines(c(T.solidus.C, T.solidus.C), c(0, (z.size / 1000)))
+
+# Plot key 1D results using base R. 
+# Set axis limits.
+xrange <- range(0, 1800)  # T range
+yrange <- range(0, 10)  # depth in km
+# Make plot.
+plot.new()  # Start new plot.
+# Make plot.
+plot(xrange, yrange,
+     type = "n",
+     xlab = "Temperature (°C)",
+     ylab = "Depth (km)",
+     ylim = c(10, 0),)
+# Set number of colors based on number of model results being plotted.
+colors <- rainbow(length(T.1D.lim))  # Set number of colors.
+# Add lines.
+for (i in 1:length(T.1D.lim)) {
+  tempprofile <- T.1D.lim[[i]] -273.15
+  lines(tempprofile, z / 1000,
+        type = "l",
+        lwd = 1.75,
+        col = colors[i],
+        lty = "solid")
+}
+# Add title.
+title("1D model of temperature through center of the melt sheet")
+# Create a vector of years associated with lines plotted.
+yrsplotted <- vector()
+modeliteration <- vector()
+yrsplotted <- c(1, 26, 51, 101, 126, 151, 176, 201, 226, 251, 276, 301)
+modeliteration <- yrsplotted - 1
+yrsplotted <- round(((yrsplotted - 1) * dt.yr), digits = 0)
+# Add a legend. 
+legend(900, 6, 
+       paste("t = ", yrsplotted, " years, model run #", modeliteration, sep = ""), 
+       cex = 0.8, 
+       col = colors, 
+       lty = "solid",
+       lwd = 1.75,
+       title = "Years elapsed")
+# Add vertical lunes for liquidus and solidus.
+lines(c(T.liquidus.C, T.liquidus.C), c(0, (z.size / 1000)),
+      lwd = 2,
+      col = "gray")
+lines(c(T.solidus.C, T.solidus.C), c(0, (z.size / 1000)),
+      lwd = 2,
+      col = "gray")
+text(x = T.liquidus.C + 30, y = 3.5, labels = "liquidus", srt = 270)
+text(x = T.solidus.C + 30, y = 3.5, labels = "solidus", srt = 270)
+
+
