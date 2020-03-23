@@ -16,7 +16,6 @@ if(!require(RColorBrewer)){install.packages("RColorBrewer")}
 library(RColorBrewer)
 
 
-
 ## SET MODEL DIMENSIONS --------------------------------------------------------
 
 # Define size of model domain. 
@@ -270,77 +269,103 @@ T.n <- model.results$T.n  # Save the model results of temperature, [K]
 
 ## PLOT 2D MODEL RESULTS -------------------------------------------------------
 
-# Make plotting function to plot model results in °C.
-levelplotCH <- function(InputMatrix, 
-                        plot.title = "",
+# Make plotting function to plot model results in °C using the lattice package.
+levelplotCH <- function(IterationNumber,
                         x.axis.in.m = x,
                         z.axis.in.m = z,
+                        dtyr = dt.yr,
                         xnum = x.num,
                         znum = z.num,
                         xval = x.size,
                         zval = z.size) {
   
-  # Rename columns and rows so scales of x and y axes make sense.
-  # rownames(InputMatrix) <- x.axis.in.km
-  # colnames(InputMatrix) <- z.axis.in.km 
-  
-  # Make plot.
-  # OutputPlot <- levelplot(InputMatrix ~ (x.axis.in.m / 1000) * (z.axis.in.m / 1000),
-                 
-                          OutputPlot <- levelplot((InputMatrix) ~ (x.axis.in.m / 1000) * (z.axis.in.m / 1000),
+  InputMatrix <- T.n[[IterationNumber]]
                                                   
-                          # OutputPlot <- levelplot(InputMatrix - 273.15,
-                                                  
+  OutputPlot <- levelplot(InputMatrix - 273.15,
+                         
+                          # Change x and y axis scales and labeling.
+                          # Change axis labels.
+                          scales = list(x = list(at = seq(from = 0, to = xval, by = 50),
+                                                 labels = seq(from = 0, to = (xval / 1000), by = 10)),
+                                        y = list(at = seq(from = 0, to = zval, by = 20),
+                                                 labels = seq(from = 0, to = (zval / 1000), by = 2))),
+                          # Flip y axis so depth increases down.
+                          # Cut off the bottom part of the model because of 
+                          # edge effects.
+                          ylim = c(80, 0),
                           
-                          
-                          # For the functions documented here, the formula is generally of the form y ~ x | g1 * g2 * ... (or equivalently, y ~ x | g1 + g2 + ...), indicating that plots of y (on the y-axis) versus x (on the x-axis) should be produced conditional on the variables g1, g2, .... Here x and y are the primary variables, and g1, g2, ... are the conditioning variables. The conditioning variables may be omitted to give a formula of the form y ~ x, in which case the plot will consist of a single panel with the full dataset. The formula can also involve expressions, e.g., sqrt(), log(), etc. See the data argument below for rules regarding evaluation of the terms in the formula.
-                          
-                          # or the formula method, a formula of the form z ~ x * y | g1 * g2 * ..., where z is a numeric response, and x, y are numeric values evaluated on a rectangular grid. g1, g2, ... are optional conditional variables, and must be either factors or shingles if present.
-                          
-                          # Change axes.
-                          # xlim = c(0, xsize),
-                          # ylim = c((max(z)), 0),
-                          # row.values = zval,
-                          # column.values = xval,
-                          # 
                           # Plot labels.
                           xlab = "distance (km)", # x axis label
                           ylab = "depth (km)", # y axis label
-                          # xlab = "distance", # x axis label
-                          # ylab = "depth", # y axis label
-                          main = plot.title, # plot title
-                          # key=list(title="Three Cylinder Options"),
+                          # Make plot title number of years of model run.
+                          main = paste("t =", 
+                                       round(((IterationNumber - 1) * dtyr), 
+                                             digits = 0), 
+                                       "years", 
+                                       sep = " "),
                           
                           # Change the look of the plot.
-                          # aspect = 1, # change aspect ratio of plot
-                          contour = T, # add contour lines
+                          aspect = zval/xval, # change aspect ratio of plot
                           # Change the color scheme.
-                          col.regions = colorRampPalette(brewer.pal(9, 'Purples')),
+                          col.regions = colorRampPalette(brewer.pal(9, 
+                                                                    'Purples')),
+
+                          # Adjust colorbar and contour lines.
+                          # contour = T,  # Add contour lines.
                           # colorkey = list(labels = "T °C"),
-                          # scales = list(log = "e"),
-                          
-                          # Adjust colorbar.
-                          # Set colorbar limits
-                          at = c(seq(0, 1800, length.out = 50))) 
+                          # Set colorbar limits.
+                          at = c(seq(0, 1800, 
+                                     # Set density of contour interval on plot.
+                                     length.out = 20))) 
   return(OutputPlot)
 }
 
 # Test plotting function.
-levelplotCH(T.n[[1]])
-
-
-levelplotCH(T.n[[5]])
-levelplotCH(T.n[[25]])
-levelplotCH(T.n[[50]])
-levelplotCH(T.n[[75]])
-levelplotCH(T.n[[100]])
-
-# Possible function inputs.
-# plot.title = paste((round(dt.yr * 5, digits = 0)), " yrs")
+levelplotCH(1)
+levelplotCH(4)
 
 
 
-# Using base R plotting
+# Plot results using base R plotting.
+
+# Function for making a colorbar.
+# Modified from Aurélien Madouasse, https://aurelienmadouasse.wordpress.com/2012/01/13/legend-for-a-continuous-color-scale-in-r/
+
+legend.col <- function(col, lev){
+  
+  opar <- par
+  
+  n <- length(col)
+  
+  bx <- par("usr")
+  
+  box.cx <- c(bx[2] + (bx[2] - bx[1]) / 1000,
+              bx[2] + (bx[2] - bx[1]) / 1000 + (bx[2] - bx[1]) / 50)
+  box.cy <- c(bx[3], bx[3])
+  box.sy <- (bx[4] - bx[3]) / n
+  
+  xx <- rep(box.cx, each = 2)
+  
+  par(xpd = TRUE)
+  for(i in 1:n){
+    
+    yy <- c(box.cy[1] + (box.sy * (i - 1)),
+            box.cy[1] + (box.sy * (i)),
+            box.cy[1] + (box.sy * (i)),
+            box.cy[1] + (box.sy * (i - 1)))
+    polygon(xx, yy, col = col[i], border = col[i])
+    
+  }
+  par(new = TRUE)
+  plot(0, 0, type = "n",
+       ylim = c(min(lev), max(lev)),
+       yaxt = "n", ylab = "",
+       xaxt = "n", xlab = "",
+       frame.plot = FALSE)
+  axis(side = 4, las = 2, tick = FALSE, line = .25)
+  par <- opar
+}
+
 
 MeltSheetPlot <- function(IterationNumber) {
   # Make plot.
@@ -363,12 +388,17 @@ MeltSheetPlot <- function(IterationNumber) {
         
         # Plot in grayscale.
         col = gray.colors(10, start = 0.9, end = 0.2))
-  legend(grconvertX(0.5, "device"), grconvertY(1, "device"), 
-         c("0",".5","1"), fill = gray.colors(10, start = 0.9, end = 0.2), xpd = NA)
+  
+  # Add colorbar.
+  legend.col(col = gray.colors(10, start = 0.9, end = 0.2), 
+             lev = c(0, 1800))
 }
 
 
-MeltSheetPlot(1)
+MeltSheetPlot(4)
+
+
+
 
 
 
