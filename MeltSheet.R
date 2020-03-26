@@ -1,6 +1,6 @@
 # This script creates a finite difference model of the cooling of a melt sheet
 # caused by an impact.
-# Updated 2020.03.18 CH
+# Updated 2020.03.24 CH
 
 ## SETUP -----------------------------------------------------------------------
 
@@ -391,30 +391,16 @@ T.1D.lim[[9]] <- T.1D[[226]]
 T.1D.lim[[10]] <- T.1D[[251]]
 T.1D.lim[[11]] <- T.1D[[276]]
 T.1D.lim[[12]] <- T.1D[[301]]
-
-### Lattice not working yet ----
-# # Plot 1D results using the lattice package.
-# # Save center lines to one matrix to plot the whole matrix at once.
-# T.1D.DF <- data.frame()  # Initialize matrix.
-# T.1D.DF <- t(do.call(rbind, T.1D))
-# colnames(T.1D.DF) <- paste("I")
-# # Make plot.
-# xyplot((z / 1000) ~ (T.1D[[1]] - 273.15),
-#        ylim = c(10, 0),
-#        type = "l",
-#        lwd = 1.5) 
-# xyplot(seq(from = 1, to = dim(T.1D.DF)[1], by = 1) ~ T.1D.DF$V1, data = T.1D.DF, type = "l", auto.key = TRUE)
-# 
-# df <- data.frame(a = runif(10), b = runif(10), c = runif(10), x = 1:10)
-# xyplot(x ~ a + b + c, data = df, type = "l", auto.key = TRUE)
-# 
+T.1D.lim[[13]] <- T.1D[[401]]
+T.1D.lim[[14]] <- T.1D[[501]]
 
 
+# Plot all 1D results using base R. 
 
-# Plot all 1D results using base R. ----
-# Set axis limits.
+# Set axis limits for plots.
 xrange <- range(0, 1800)  # T range
 yrange <- range(0, 10)  # depth in km
+
 # Make plot.
 plot.new()  # Start new plot.
 plot(xrange, yrange,
@@ -426,7 +412,7 @@ plot(xrange, yrange,
 colors <- rainbow(length(T.1D))  # Set number of colors.
 # Add lines.
 for (i in 1:length(T.1D)) {
-  tempprofile <- T.1D[[i]] -273.15
+  tempprofile <- T.1D[[i]] - 273.15
   lines(tempprofile, z / 1000,
         type = "l",
         lwd = 1.5,
@@ -441,10 +427,9 @@ title("1D model of temperature through center of the melt sheet")
 lines(c(T.liquidus.C, T.liquidus.C), c(0, (z.size / 1000)))
 lines(c(T.solidus.C, T.solidus.C), c(0, (z.size / 1000)))
 
+
 # Plot key 1D results using base R. 
-# Set axis limits.
-xrange <- range(0, 1800)  # T range
-yrange <- range(0, 10)  # depth in km
+
 # Make plot.
 plot.new()  # Start new plot.
 # Make plot.
@@ -452,12 +437,13 @@ plot(xrange, yrange,
      type = "n",
      xlab = "Temperature (°C)",
      ylab = "Depth (km)",
-     ylim = c(10, 0),)
+     ylim = c(10, 0),
+     xlim = c(0, 1800))
 # Set number of colors based on number of model results being plotted.
 colors <- rainbow(length(T.1D.lim))  # Set number of colors.
 # Add lines.
 for (i in 1:length(T.1D.lim)) {
-  tempprofile <- T.1D.lim[[i]] -273.15
+  tempprofile <- T.1D.lim[[i]] - 273.15
   lines(tempprofile, z / 1000,
         type = "l",
         lwd = 1.75,
@@ -466,20 +452,6 @@ for (i in 1:length(T.1D.lim)) {
 }
 # Add title.
 title("1D model of temperature through center of the melt sheet")
-# Create a vector of years associated with lines plotted.
-yrsplotted <- vector()
-modeliteration <- vector()
-yrsplotted <- c(1, 26, 51, 101, 126, 151, 176, 201, 226, 251, 276, 301)
-modeliteration <- yrsplotted - 1
-yrsplotted <- round(((yrsplotted - 1) * dt.yr), digits = 0)
-# Add a legend. 
-legend(900, 6, 
-       paste("t = ", yrsplotted, " years, model run #", modeliteration, sep = ""), 
-       cex = 0.8, 
-       col = colors, 
-       lty = "solid",
-       lwd = 1.75,
-       title = "Years elapsed")
 # Add vertical lunes for liquidus and solidus.
 lines(c(T.liquidus.C, T.liquidus.C), c(0, (z.size / 1000)),
       lwd = 2,
@@ -489,5 +461,71 @@ lines(c(T.solidus.C, T.solidus.C), c(0, (z.size / 1000)),
       col = "gray")
 text(x = T.liquidus.C + 30, y = 3.5, labels = "liquidus", srt = 270)
 text(x = T.solidus.C + 30, y = 3.5, labels = "solidus", srt = 270)
+# Create a vector of years associated with lines plotted.
+yrsplotted <- vector()
+modeliteration <- vector()
+yrsplotted <- c(1, 26, 51, 101, 126, 151, 176, 201, 226, 251, 276, 301, 401, 501)
+modeliteration <- yrsplotted - 1
+yrsplotted <- round(((yrsplotted - 1) * dt.yr), digits = 0)
+# Add a legend. 
+legend(900, 5.75, 
+       paste("t = ", yrsplotted, " years, model run #", modeliteration, sep = ""), 
+       cex = 0.8, 
+       col = colors, 
+       lty = "solid",
+       lwd = 1.75,
+       title = "Years elapsed")
+
+
+## OUTPUT RESULTS --------------------------------------------------------------
+
+# Make table of model parameters to output as .csv file.
+
+# Create and populate a data frame of model parameters (MP).
+MP <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3))
+colnames(MP) <- c("Variable", "Units", "Value")
+
+# Model domain and resolution.
+MP[1, ]  <- c("Model domain and resolution", "", "")
+MP[2, ]  <- c("Modeled domain, distance", "km", x.size / 1000)
+MP[3, ]  <- c("Step size, distance", "m", round(dx, digits = 1))
+MP[4, ]  <- c("Modeled domain, depth", "km", z.size / 1000)
+MP[5, ]  <- c("Step size, depth", "m", round(dz, digits = 1))
+MP[6, ]  <- c("Time step", "years", round(dt.yr, digits = 1))
+
+# Melt sheet size.
+MP[7, ]  <- c("Melt sheet dimensions", "", "")
+MP[8, ]  <- c("Melt sheet diameter", "km", meltsheetdiameter / 1000)
+MP[9, ]  <- c("Melt sheet volume", "km^3", meltsheetvolume)
+MP[10, ] <- c("Melt sheet thickness", "km", round(meltsheetthickness / 1000, digits = 2))
+MP[11, ] <- c("Depth excavated during impact (central uplift)", "km", height.of.uplift)
+
+# Temperatures.
+MP[12, ] <- c("Temperatures", "", "")
+MP[13, ] <- c("Melt sheet temperature at emplacement", "°C", T.meltsheet.C)
+MP[14, ] <- c("Surface temperature", "°C", T.surface.C)
+MP[15, ] <- c("Temperature, liquidus", "°C", T.liquidus.C)
+MP[16, ] <- c("Temperature, solidus", "°C", T.solidus.C)
+
+# Melt sheet and basement rock properties.
+MP[17, ] <- c("Physical properties of basement and melt sheet", "", "")
+MP[18, ] <- c("Geothermal gradient", "°C/km", a.Kkm)
+MP[19, ] <- c("Latent heat of fusion of diopside", "J/kg", L)
+MP[20, ] <- c("Heat capacity, no latent heat effects", "J/(kg*K)", Cp.nolatent)
+MP[21, ] <- c("Heat capacity, accounting for latent heat of fusion", "J/(kg*K)", round(Cp.prime[1, 1], digits = 1))
+MP[22, ] <- c("Thermal conductivity", "W/(m*K)", k[1, 1])
+MP[23, ] <- c("Heat production, basement and melt sheet", "W/(m^3)", A[1, 1])
+MP[24, ] <- c("Density, basement and melt sheet", "kg/(m^3)", rho[1,1])
+MP[25, ] <- c("Thermal diffusivity, basement and melt", "(m^2)/s", round(Kappa[1, 1], digits = 7))
+MP[26, ] <- c("Regional tectonic uplift", "m/s", U[1, 1])
+
+# Write table to csv.
+write.csv(MP, file = "/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/ModelParameters_2020.03.24.csv")
+
+
+
+
+
+
 
 
