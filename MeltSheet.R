@@ -1,6 +1,6 @@
 # This script creates a finite difference model of the cooling of a melt sheet
 # caused by an impact.
-# Updated 2020.03.24 CH
+# Updated 2020.03.26 CH
 
 ## SETUP -----------------------------------------------------------------------
 
@@ -262,7 +262,7 @@ RunModel <- function(n.timesteps) {
 ## RUN MODEL -------------------------------------------------------------------
 
 # Solve the finite difference equation for n time steps.
-n <- 500  # Set number of time steps.
+n <- 5  # Set number of time steps.
 model.results <- RunModel(n)  # Run model for n timesteps.
 T.n <- model.results$T.n  # Save the model results of temperature, [K]
 
@@ -286,10 +286,12 @@ levelplotCH <- function(IterationNumber,
                          
                           # Change x and y axis scales and labeling.
                           # Change axis labels.
-                          scales = list(x = list(at = seq(from = 0, to = xval, by = 50),
-                                                 labels = seq(from = 0, to = (xval / 1000), by = 10)),
-                                        y = list(at = seq(from = 0, to = zval, by = 20),
-                                                 labels = seq(from = 0, to = (zval / 1000), by = 2))),
+                          # scales = list(x = list(at = seq(from = 0, to = xval, by = 50),
+                          #                        labels = seq(from = 0, to = (xval / 1000), by = 10)),
+                          #               y = list(at = seq(from = 0, to = zval, by = 20),
+                          #                        labels = seq(from = 0, to = (zval / 1000), by = 2))),
+                          scales = list(x = list(labels = seq(from = 0, to = (xval / 1000), by = 10)),
+                                        y = list(labels = seq(from = 0, to = (zval / 1000), by = 2))),
                           # Flip y axis so depth increases down.
                           # Cut off the bottom part of the model because of 
                           # edge effects.
