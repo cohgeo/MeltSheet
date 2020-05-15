@@ -1,6 +1,6 @@
 # This script creates a finite difference model of the cooling of a melt sheet
 # caused by an impact.
-# Updated 2020.03.26 CH
+# Updated 2020.05.15 CH
 
 ## SETUP -----------------------------------------------------------------------
 
@@ -42,12 +42,12 @@ z <- seq(from = 0, to = z.size, by = dz)  # [m]
 L <- 421000  # latent heat of fusion of diopside, [J/kg] 
 # Suggested value: 421000 J/kg; Abramov and Kring (2007)
 
-T.liquidus.C <- 1177  # liquidus temperature, [°C]
-# Suggested value: 1177°C; Abramov and Kring (2007)
+T.liquidus.C <- 1195  # liquidus temperature, [°C]
+# Suggested value: 1195°C from MELTS modeling
 T.liquidus <- T.liquidus.C + 273.15  # liquidus temperature, [K]
 
-T.solidus.C <- 997  # solidus temperature, [°C]
-# Suggested value: 997°C; Abramov and Kring (2007)
+T.solidus.C <- 796  # solidus temperature, [°C]
+# Suggested value: 796°C from MELTS modeling
 T.solidus <- T.solidus.C + 273.15  # solidus temperature, [K]
 
 Cp.nolatent <- 1000  # heat capacity with no latent heat, [J/(kg*K)]
