@@ -11,20 +11,19 @@ rm(list = ls())
 # Install and load lattice for plotting results.
 if(!require(lattice)){install.packages("lattice")}
 library(lattice)
-# Install and load RColorBrewer for plot color schemes.
-if(!require(RColorBrewer)){install.packages("RColorBrewer")}
-library(RColorBrewer)
-
+# Install and load grDevices for plot color schemes.
+if(!require(grDevices)){install.packages("grDevices")}
+library(grDevices)
 
 ## SET MODEL DIMENSIONS --------------------------------------------------------
 
 # Define size of model domain. 
 x.size <- 60000  # [m] 
-z.size <- 10000  # [m] 
+z.size <- 20000  # [m] 
 
 # Set resolution (number of nodes).  
 x.num <- 300
-z.num <- 100
+z.num <- 200
 
 # Define stepsize.
 dx <- x.size / (x.num - 1)  # [m] 
@@ -100,6 +99,9 @@ dt.min <- min(dt.max.x, dt.max.z)
 dt.yr <- dt.min * 3.17098e-8 # [yr]
 dt <- dt.min
 
+# Choose our own dt (has to be bigger than dt.min).
+dt.choice.yr <- 100  # [yr]
+dt <- dt.choice.yr / 3.17098e-8  # [s]
 
 ## INITIAL T DISTRIBUTION ------------------------------------------------------
 # Set up an initial condition of an instantaneously emplaced melt sheet at an 
@@ -126,7 +128,9 @@ for (i in 2:dim(T.0)[2]) {
 # sheet.
 # Set dimensions of melt sheet.
 meltsheetdiameter <- 30000  # [m]
-meltsheetvolume <- 1000  # [km^3]
+meltsheetvolume <- 800  # [km^3]
+# Option 1: 800 km^3
+# Option 2: 1000 km^3
 meltsheetvolume.m3 <- meltsheetvolume * (1000^3)
 meltsheetthickness <- meltsheetvolume.m3 / 
                       (((meltsheetdiameter / 2)^2) * pi)  # [m]
@@ -146,25 +150,68 @@ zend.melt <- z[2] + meltsheetthickness
 zend.melt.index <- round(zend.melt / dz, digits = 0)
 
 # Set temperature of melt sheet.
-T.meltsheet.C <- 1700  # temperature of melt sheet, [°C]
+T.meltsheet.C <- 2370  # temperature of melt sheet, [°C]
 T.meltsheet <- T.meltsheet.C + 273.15  # temperature of melt sheet, [°C]
-  # Suggested value: 1700°C; Abramov and Kring (2007)
+# Option 1: 1700°C; Abramov and Kring (2007)
+# Option 2: 2000°C
+# Option 3: 2370°C; Timms et al. (2017)
 
-# Elevate geotherm at central uplift.
-# Set the temperature with which to raise the geotherm everywhere in the central
-# uplift. 
-# The height of uplift is dependent on the size of the crater. 40 km of uplift
-# is an estimate based on the size of the crater associated with a 30 km in 
-# diameter melt sheet.
-height.of.uplift <- 40  # amount of uplift, [km]
-T.uplift <- height.of.uplift * a.Kkm
 
-# Optional simple uplift of the geotherm temperature gradient.
-for (j in xstart.melt.index:xend.melt.index) {
-  for (i in 2:z.num){
-    T.0[j, i] <- T.0[j, i] + T.uplift
+# Elevate the temperature at central uplift.
+
+# # Option 1: raise geotherm everywhere beneath the melt sheet.
+# # Set the temperature with which to raise the geotherm everywhere in the central
+# # uplift. 
+# # The height of uplift is dependent on the size of the crater. 40 km of uplift
+# # is an estimate based on the size of the crater associated with a 30 km in 
+# # diameter melt sheet.
+# height.of.uplift <- 20  # amount of uplift, [km]
+# # Option 1: 20 km
+# # Option 2: 40 km
+# T.uplift <- height.of.uplift * a.Kkm
+# # Simple uplift of the geotherm temperature gradient.
+# for (j in xstart.melt.index:xend.melt.index) {
+#   for (i in 2:z.num){
+#     T.0[j, i] <- T.0[j, i] + T.uplift
+#   }
+# }
+
+
+# Option 2: raise geotherm in half ellipse below melt sheet, 
+# Set melt sheet base depth in m as a variable to place uplift below melt sheet.
+base.meltsheet.m <- meltsheetthickness + dz  # [m], add dz for air layer at top
+# Set maximum depth of uplift region for ellipse calculations.
+uplift.depth.m <- meltsheetthickness * 3
+
+# Scale the temperature by position from center of ellipse.
+# Calculate the position of half an ellipse of uplift under the melt sheet.
+for (i in 1:x.num) {
+  for (j in 1:z.num) {
+    # Calculate the value at the node to determine if it inside or outside the 
+    # ellipse.
+    # Option 1: ellipse with the same diameter as the melt sheet:
+    # node.value <- (((x[[i]] - mean(x))^2) / ((meltsheetdiameter / 2)^2)) + 
+    #   (((z[[j]] - base.meltsheet.m)^2) / (uplift.depth.m^2))
+    # Option 2: circle with the same diameter as the melt sheet:
+    # node.value <- (((x[[i]] - mean(x))^2) / ((meltsheetdiameter / 2)^2)) + 
+    #   (((z[[j]] - base.meltsheet.m)^2) / ((meltsheetdiameter / 2) ^ 2))
+    # Option 3: Large circle with diameter 2 times larger than melt sheet 
+    # diameter, centered above melt sheet:
+    node.value <- (((x[[i]] - mean(x))^2) / ((meltsheetdiameter)^2)) + 
+      (((z[[j]] - (-meltsheetdiameter / 2))^2) / ((meltsheetdiameter) ^ 2))
+    # Assign a value to the uplift matrix that depends on whether the node is
+    # inside out outside the uplift ellipse.
+    if (node.value <= 1) {
+      # Inside the ellipse, scale the temperature position to decrease from 
+      # center of ellipse. 
+      T.0[i, j] <- 1200 + -node.value * 600 
+    } else {
+      # Outside the ellipse, keep the geotherm the same temperature.
+      T.0[i, j] <- T.0[i, j] 
+    }
   }
 }
+
 
 # Emplace melt sheet. Set material properties of melt sheet.
 for (i in xstart.melt.index:xend.melt.index) {
@@ -181,6 +228,56 @@ for (i in xstart.melt.index:xend.melt.index) {
     # Kappa[i, j] <- k[i, j] / (rho[i, j] * Cp[i, j])  # [(m^2)/s]
   }
 }
+
+# Plot initial conditions to verify that the model is set up correctly.
+levelplot(T.0 - 273.15,
+          # Change x and y axis scales and labeling.
+          scales = list(x = list(labels = seq(from = 0, 
+                                              to = (x.size / 1000), 
+                                              by = 10)),
+                        y = list(labels = seq(from = 0, 
+                                              to = (z.size / 1000), 
+                                              by = 2))),
+          # Flip y axis so depth increases down.
+          # Cut off the bottom part of the model because of edge effects.
+          ylim = c(80, 0),
+          # Plot labels.
+          xlab = "distance (km)", # x axis label
+          ylab = "depth (km)", # y axis label
+          # Make plot title number of years of model run.
+          main = "t = 0",
+          # Change aspect ratio of plot
+          aspect = (z.size / 2) / x.size,
+          # Change the color scheme.
+          col.regions = rev(hcl.colors(n = 25, palette = 'Reds 2')),
+          # Set colorbar limits and density of contour interval on plot.
+          at = c(seq(0, 2500, length.out = 25))) 
+
+# Plot initial conditions to verify that the model is set up correctly with a 
+# more restricted T range.
+levelplot(T.0 - 273.15,
+          # Change x and y axis scales and labeling.
+          scales = list(x = list(labels = seq(from = 0, 
+                                              to = (x.size / 1000), 
+                                              by = 10)),
+                        y = list(labels = seq(from = 0, 
+                                              to = (z.size / 1000), 
+                                              by = 2))),
+          # Flip y axis so depth increases down.
+          # Cut off the bottom part of the model because of edge effects.
+          ylim = c(80, 0),
+          # Plot labels.
+          xlab = "distance (km)", # x axis label
+          ylab = "depth (km)", # y axis label
+          # Make plot title number of years of model run.
+          main = "t = 0",
+          # Change aspect ratio of plot
+          aspect = (z.size / 2) / x.size,
+          # Change the color scheme.
+          col.regions = rev(hcl.colors(n = 25, palette = 'Reds 2')),
+          # Set colorbar limits and density of contour interval on plot.
+          at = c(seq(0, 1000, length.out = 10))) 
+
 
 
 ## CREATE FUNCTION OF THERMAL MODEL --------------------------------------------
@@ -262,10 +359,15 @@ RunModel <- function(n.timesteps) {
 ## RUN MODEL -------------------------------------------------------------------
 
 # Solve the finite difference equation for n time steps.
-n <- 5  # Set number of time steps.
+n <- 1000  # Set number of time steps.
 model.results <- RunModel(n)  # Run model for n timesteps.
 T.n <- model.results$T.n  # Save the model results of temperature, [K]
 
+# # Save model results.
+# saveRDS(T.n, file = "/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.05.19/T.n_2370C_800km3_40km.RData")
+# # # Load in previous model run results.
+# # T.n.1700 <- list()
+# T.n <- readRDS("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.05.19/T.n_1700C_800km3_40km.RData")
 
 ## PLOT 2D MODEL RESULTS -------------------------------------------------------
 
@@ -281,90 +383,72 @@ levelplotCH <- function(IterationNumber,
   
   # Specify dataset by the model iteration number.
   InputMatrix <- T.n[[IterationNumber]]
-                                                  
+  # Make plot.                                                
   OutputPlot <- levelplot(InputMatrix - 273.15,
-                         
-                          # Change x and y axis scales and labeling.
-                          # Change axis labels.
-                          # scales = list(x = list(at = seq(from = 0, to = xval, by = 50),
-                          #                        labels = seq(from = 0, to = (xval / 1000), by = 10)),
-                          #               y = list(at = seq(from = 0, to = zval, by = 20),
-                          #                        labels = seq(from = 0, to = (zval / 1000), by = 2))),
-                          scales = list(x = list(labels = seq(from = 0, to = (xval / 1000), by = 10)),
-                                        y = list(labels = seq(from = 0, to = (zval / 1000), by = 2))),
-                          # Flip y axis so depth increases down.
-                          # Cut off the bottom part of the model because of 
-                          # edge effects.
-                          ylim = c(80, 0),
-                          
-                          # Plot labels.
-                          xlab = "distance (km)", # x axis label
-                          ylab = "depth (km)", # y axis label
-                          # Make plot title number of years of model run.
-                          main = paste("t =", 
-                                       round(((IterationNumber - 1) * dtyr), 
-                                             digits = 0), 
-                                       "years, model iteration =",
-                                       IterationNumber - 1,
-                                       sep = " "),
-                          
-                          # Change the look of the plot.
-                          aspect = zval/xval, # change aspect ratio of plot
-                          # Change the color scheme.
-                          col.regions = colorRampPalette(brewer.pal(9,
-                                        'Purples')),
-                                        # 'Greys')),  # Plot in grayscale.
-
-                          # Adjust colorbar and contour lines.
-                          # contour = T,  # Add contour lines.
-                          # colorkey = list(labels = "T °C"),
-                          # Set colorbar limits.
-                          at = c(seq(0, 1800, 
-                                     # Set density of contour interval on plot.
-                                     length.out = 20))) 
+    # Change x and y axis scales and labeling.
+    scales = list(x = list(labels = seq(from = 0, to = (xval / 1000), by = 10)),
+                  y = list(labels = seq(from = 0, to = (zval / 1000), by = 2))),
+    # Flip y axis so depth increases down.
+    # Cut off the bottom part of the model because of edge effects.
+    ylim = c(80, 0),
+    # Plot labels.
+    xlab = "distance (km)", # x axis label
+    ylab = "depth (km)", # y axis label
+    # Make plot title number of years of model run.
+    main = paste("t =", 
+                 (round(((IterationNumber - 1) * dt.choice.yr), 
+                       digits = 0)) / 1000, 
+                 "ka",
+                 sep = " "),
+    # Change aspect ratio of plot
+    aspect = (zval/2)/xval,
+    # Change the color scheme.
+    col.regions = rev(hcl.colors(n = 25, palette = 'Reds 2')),
+    # col.regions = rev(hcl.colors(n = 25, palette = 'Grays')),  # Plot in grayscale.
+    # contour = T,  # Add contour lines.
+    # Set colorbar limits and density of contour interval on plot.
+    at = c(seq(0, 2500, length.out = 25))) 
   return(OutputPlot)
 }
 
 # Plot results.
 levelplotCH(1)
+levelplotCH(5)
 levelplotCH(26)
-levelplotCH(51)
+levelplotCH(61)
 levelplotCH(101)
-levelplotCH(126)
-levelplotCH(151)
-levelplotCH(176)
-levelplotCH(201)
-levelplotCH(500)
+levelplotCH(501)
+levelplotCH(1001)
 
 # Output plots as a PDF.
-# Page 1 (0, 25, 50, 100)
-pdf("/Users/claireharrigan/Desktop/MeltSheetPlots/MeltSheet_2Dplots_0-25-50-100.pdf",
+# Page 1 (0, 50, 100, 200)
+pdf("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.05.21/MeltSheet_2Dplot_Morokweng_2020.05.21_01.pdf",
   width = 8.5, height = 11,
   useDingbats = FALSE)
 print(levelplotCH(1), split = c(1,1,1,4), more = T) 
-print(levelplotCH(26), split = c(1,2,1,4), more = T)
-print(levelplotCH(51), split = c(1,3,1,4), more = T)
-print(levelplotCH(101), split = c(1,4,1,4))
-dev.off()
-
-# Page 2 (125, 150, 175, 200)
-pdf("/Users/claireharrigan/Desktop/MeltSheetPlots/MeltSheet_2Dplots_125-150-175-200.pdf",
-    width = 8.5, height = 11,
-    useDingbats = FALSE)
-print(levelplotCH(126), split = c(1,1,1,4), more = T) 
-print(levelplotCH(151), split = c(1,2,1,4), more = T)
-print(levelplotCH(176), split = c(1,3,1,4), more = T)
+print(levelplotCH(51), split = c(1,2,1,4), more = T)
+print(levelplotCH(101), split = c(1,3,1,4), more = T)
 print(levelplotCH(201), split = c(1,4,1,4))
 dev.off()
 
-# Page 3 (225, 250, 275, 300)
-pdf("/Users/claireharrigan/Desktop/MeltSheetPlots/MeltSheet_2Dplots_225-250-275-300.pdf",
+# Page 2 (300, 400, 500, 600)
+pdf("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.05.21/MeltSheet_2Dplot_Morokweng_2020.05.21_02.pdf",
     width = 8.5, height = 11,
     useDingbats = FALSE)
-print(levelplotCH(226), split = c(1,1,1,4), more = T) 
-print(levelplotCH(251), split = c(1,2,1,4), more = T)
-print(levelplotCH(276), split = c(1,3,1,4), more = T)
-print(levelplotCH(301), split = c(1,4,1,4))
+print(levelplotCH(301), split = c(1,1,1,4), more = T) 
+print(levelplotCH(401), split = c(1,2,1,4), more = T)
+print(levelplotCH(501), split = c(1,3,1,4), more = T)
+print(levelplotCH(601), split = c(1,4,1,4))
+dev.off()
+
+# Page 3 (700, 800, 900, 1000)
+pdf("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.05.21/MeltSheet_2Dplot_Morokweng_2020.05.21_03.pdf",
+    width = 8.5, height = 11,
+    useDingbats = FALSE)
+print(levelplotCH(701), split = c(1,1,1,4), more = T) 
+print(levelplotCH(801), split = c(1,2,1,4), more = T)
+print(levelplotCH(901), split = c(1,3,1,4), more = T)
+print(levelplotCH(1001), split = c(1,4,1,4))
 dev.off()
 
 ## PLOT 1D MODEL RESULTS -------------------------------------------------------
@@ -378,71 +462,51 @@ T.1D <- list()
 for (i in 1:length(T.n)) {
   T.1D[[i]] <- T.n[[i]][(x.num / 2), ]
 }
+# Iterate through T.n list, extract T values through 70.3% away from the center 
+# of melt sheet (location of borehole M3), save in list T.1D.
+# Find the node location of M3.
+# M3 <- round((mean(x) - ((meltsheetdiameter / 2) * 0.703)) / dx, digits = 0)
+# # Iterate through all matrices in list
+# for (i in 1:length(T.n)) {
+#   T.1D[[i]] <- T.n[[i]][(M3), ]
+# }
+
+
+
 
 # Extract limited results to plot.
 T.1D.lim <- list()
 T.1D.lim[[1]] <- T.1D[[1]]
 T.1D.lim[[2]] <- T.1D[[26]]
 T.1D.lim[[3]] <- T.1D[[51]]
-T.1D.lim[[4]] <- T.1D[[101]]
-T.1D.lim[[5]] <- T.1D[[126]]
-T.1D.lim[[6]] <- T.1D[[151]]
-T.1D.lim[[7]] <- T.1D[[176]]
-T.1D.lim[[8]] <- T.1D[[201]]
-T.1D.lim[[9]] <- T.1D[[226]]
-T.1D.lim[[10]] <- T.1D[[251]]
-T.1D.lim[[11]] <- T.1D[[276]]
-T.1D.lim[[12]] <- T.1D[[301]]
-T.1D.lim[[13]] <- T.1D[[401]]
-T.1D.lim[[14]] <- T.1D[[501]]
+T.1D.lim[[4]] <- T.1D[[76]]
+T.1D.lim[[5]] <- T.1D[[101]]
+T.1D.lim[[6]] <- T.1D[[201]]
+T.1D.lim[[7]] <- T.1D[[301]]
+T.1D.lim[[8]] <- T.1D[[401]]
+T.1D.lim[[9]] <- T.1D[[501]]
+T.1D.lim[[10]] <- T.1D[[601]]
+T.1D.lim[[11]] <- T.1D[[701]]
 
 
-# Plot all 1D results using base R. 
+# Plot 1D results using base R. 
 
-# Set axis limits for plots.
-xrange <- range(0, 1800)  # T range
-yrange <- range(0, 10)  # depth in km
-
-# Make plot.
-plot.new()  # Start new plot.
-plot(xrange, yrange,
-     type = "n",
-     xlab = "Temperature (°C)",
-     ylab = "Depth (km)",
-     ylim = c(10, 0),)
-# Set number of colors based on number of model results being plotted.
-colors <- rainbow(length(T.1D))  # Set number of colors.
-# Add lines.
-for (i in 1:length(T.1D)) {
-  tempprofile <- T.1D[[i]] - 273.15
-  lines(tempprofile, z / 1000,
-        type = "l",
-        lwd = 1.5,
-        col = colors[i],
-        lty = "solid")
-}
-# Add title.
-title("1D model of temperature through center of the melt sheet")
-# Add a legend. 
-# legend(1600, 8, 1:length(T.1D), cex=0.8, col=colors, lty = "solid", title = "Model run")
-# Add vertical lunes for liquidus and solidus.
-lines(c(T.liquidus.C, T.liquidus.C), c(0, (z.size / 1000)))
-lines(c(T.solidus.C, T.solidus.C), c(0, (z.size / 1000)))
-
-
-# Plot key 1D results using base R. 
+# Set melt sheet base depth in km as a variable.
+base.meltsheet <- (meltsheetthickness + dz) / 1000 # add dz for air layer at top
 
 # Make plot.
 plot.new()  # Start new plot.
 # Make plot.
-plot(xrange, yrange,
+plot(range(0, 2500), range(0, 4),
      type = "n",
      xlab = "Temperature (°C)",
      ylab = "Depth (km)",
-     ylim = c(10, 0),
-     xlim = c(0, 1800))
+     ylim = c(4, 0),
+     yaxs = "i",
+     xlim = c(0, 2500),
+     xaxs = "i")
 # Set number of colors based on number of model results being plotted.
-colors <- rainbow(length(T.1D.lim))  # Set number of colors.
+colors <- (hcl.colors(n = length(T.1D.lim), palette = "Spectral"))
 # Add lines.
 for (i in 1:length(T.1D.lim)) {
   tempprofile <- T.1D.lim[[i]] - 273.15
@@ -453,7 +517,8 @@ for (i in 1:length(T.1D.lim)) {
         lty = "solid")
 }
 # Add title.
-title("1D model of temperature through center of the melt sheet")
+title("1D model, center of melt sheet\nT.meltsheet = 2370°C, V.meltsheet = 800 km^3, \nuplift geometry: large circle centered above model domain",
+      cex.main = 0.8)
 # Add vertical lunes for liquidus and solidus.
 lines(c(T.liquidus.C, T.liquidus.C), c(0, (z.size / 1000)),
       lwd = 2,
@@ -463,20 +528,101 @@ lines(c(T.solidus.C, T.solidus.C), c(0, (z.size / 1000)),
       col = "gray")
 text(x = T.liquidus.C + 30, y = 3.5, labels = "liquidus", srt = 270)
 text(x = T.solidus.C + 30, y = 3.5, labels = "solidus", srt = 270)
+# Add horizontal lines for sample horizons.
+# M3-1
+lines(c(0, 2500), c(base.meltsheet - 0.7566, base.meltsheet - 0.7566),
+      lwd = 1,
+      col = "black")
+# M3-2
+lines(c(0, 2500), c(base.meltsheet - 0.4711, base.meltsheet - 0.4711),
+      lwd = 1,
+      col = "black")
+# M3-3
+lines(c(0, 2500), c(base.meltsheet - 0.2599, base.meltsheet - 0.2599),
+      lwd = 1,
+      col = "black")
+# M3-4
+lines(c(0, 2500), c(base.meltsheet - 0.1716, base.meltsheet - 0.1716),
+      lwd = 1,
+      col = "black")
+# M3-6
+lines(c(0, 2500), c(base.meltsheet - 0.1081, base.meltsheet - 0.1081),
+      lwd = 1,
+      col = "black")
+# base of melt sheet
+lines(c(0, 2500), c(base.meltsheet, base.meltsheet),
+      lwd = 1,
+      col = "blue")
 # Create a vector of years associated with lines plotted.
 yrsplotted <- vector()
 modeliteration <- vector()
-yrsplotted <- c(1, 26, 51, 101, 126, 151, 176, 201, 226, 251, 276, 301, 401, 501)
+# yrsplotted <- c(1, 26, 51, 76, 101, 151, 201, 251, 301, 351, 401, 451, 501, 551, 601, 651, 701, 751, 801, 851, 901, 951, 1001)
+# yrsplotted <- c(1, 26, 51, 76, 101, 151, 201, 251, 301, 351, 401, 451, 501, 751, 1001, 1251, 1501, 1751, 2001)
+yrsplotted <- c(1, 26, 51, 76, 101, 201, 301, 401, 501, 601, 701)
 modeliteration <- yrsplotted - 1
-yrsplotted <- round(((yrsplotted - 1) * dt.yr), digits = 0)
+yrsplotted <- round(((yrsplotted - 1) * dt.choice.yr), digits = 0) / 1000
 # Add a legend. 
-legend(900, 5.75, 
-       paste("t = ", yrsplotted, " years, model run #", modeliteration, sep = ""), 
+legend("bottomright", 
+       # paste("t = ", yrsplotted, " years, model run #", modeliteration, sep = ""), 
+       paste(yrsplotted), 
        cex = 0.8, 
        col = colors, 
        lty = "solid",
        lwd = 1.75,
-       title = "Years elapsed")
+       title = "time elapsed (ka)")
+
+
+## PLOT MODEL RESULTS THROUGH TIME FOR EACH SAMPLE -----------------------------
+
+# Extract a temperature value for each time step (each matrix in the T.n list)
+# at a given depth and distance from the center of the melt sheet (sample 
+# location).
+
+# Initialize matrix to hold temperature values from T.n matricies for all 
+# samples.
+T.M3 <- matrix(data = NA,
+               nrow = 5, # a row for each sample  
+               ncol = n + 1)  # a column for each time step
+# Rename T.M3 rows by sample.
+rownames(T.M3) <- c("M3-1", "M3-2", "M3-3", "M3-4", "M3-6")
+# Rename T.M3 columns by time step (in ka).
+colnames(T.M3) <- paste((round(((seq(from = 0, to = n)) * dt.choice.yr), 
+                               digits = 0)) / 1000, "ka", sep = " ")
+
+# Find the node location (x axis) of M3 borehole (70.3% away from the center of
+#   the meltsheet).
+M3 <- round((mean(x) - ((meltsheetdiameter / 2) * 0.703)) / dx, digits = 0)
+
+# Determine which row of the model (z axis) results matrices corresponds to each
+# sample depth.
+# Set melt sheet base depth in km as a variable.
+base.meltsheet <- (meltsheetthickness + dz) / 1000 # add dz for air layer at top
+# Initialize vector to hold sample depths.
+z.samples <- vector()
+# Find nodal depth of M3-1.
+z.samples[[1]] <- round(((base.meltsheet - 0.7566) * 1000) / dz, digits = 0)
+# M3-2
+z.samples[[2]] <- round(((base.meltsheet - 0.4711) * 1000) / dz, digits = 0)
+# M3-3
+z.samples[[3]] <- round(((base.meltsheet - 0.2599) * 1000) / dz, digits = 0)
+# M3-4
+z.samples[[4]] <- round(((base.meltsheet - 0.1716) * 1000) / dz, digits = 0)
+# M3-6
+z.samples[[5]] <- round(((base.meltsheet - 0.1081) * 1000) / dz, digits = 0)
+
+
+# Iterate through T.n list, extract T values at the M3 borehole for each sample,
+# save in matrix T.M3.
+for (n in 1:length(z.samples)) {
+  for (i in 1:length(T.n)) {
+    T.M3[n, i] <- T.n[[i]][z.samples[[n]], M3]
+  }
+}
+
+# Plot T-t path for each sample and indicate when each passes through the
+solidus.
+
+
 
 
 ## OUTPUT RESULTS --------------------------------------------------------------
@@ -493,7 +639,7 @@ MP[2, ]  <- c("Modeled domain, distance", "km", x.size / 1000)
 MP[3, ]  <- c("Step size, distance", "m", round(dx, digits = 1))
 MP[4, ]  <- c("Modeled domain, depth", "km", z.size / 1000)
 MP[5, ]  <- c("Step size, depth", "m", round(dz, digits = 1))
-MP[6, ]  <- c("Time step", "years", round(dt.yr, digits = 1))
+MP[6, ]  <- c("Time step", "years", round(dt.choice.yr, digits = 1))
 
 # Melt sheet size.
 MP[7, ]  <- c("Melt sheet dimensions", "", "")
