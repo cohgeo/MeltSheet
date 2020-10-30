@@ -1,11 +1,13 @@
 # This script creates a finite difference model of the cooling of a melt sheet
 # caused by an impact.
-# Updated 2020.06.05 CH
+# In this case we model the cooling of the Morokweng melt sheet.
+# This code is designed to run in R.
+# Updated 2020.10.30 CH
 
 ## SETUP -----------------------------------------------------------------------
 
 # Clear all from workspace/environment.
-  rm(list = ls())
+  # rm(list = ls())
 
 # Install and load required packages.
   # Install and load lattice for plotting results.
@@ -45,13 +47,15 @@
   # Suggested value: 421000 J/kg; Abramov and Kring (2007)
   L <- 421000  # [J/kg] 
 # Set liquidus temperature.
-  # Suggested value: 1195°C from MELTS modeling
+  # Suggested value: 1195°C from MELTS modeling.
   T.liquidus.C <- 1195  # [°C]
   T.liquidus <- T.liquidus.C + 273.15  # [K]
 # Set solidus temperature.
-  # Suggested value: 796°C from MELTS modeling
+  # Suggested value: 796°C from MELTS modeling.
   T.solidus.C <- 796  # [°C]
   T.solidus <- T.solidus.C + 273.15  # [K]
+# Set Zr saturation temperature from MELTS modeling.
+  T.Zrsat.C <- 880  # [°C]
 # Set heat capacity with no latent heat.
   # Suggested value: 1000 J/(kg/K), heat capacity of basement, melt, breccia; 
   # Abramov and Kring (2007)
@@ -127,12 +131,18 @@
   zend.melt.index <- round(zend.melt / dz, digits = 0)
   # Rename zend.melt for clarity later on.
   base.MS <- zend.melt / 1000  # [km]
+# Input the sample height above base of melt sheet.
+  M3.1 <- 0.7532
+  M3.2 <- 0.4696
+  M3.3 <- 0.2596
+  M3.4 <- 0.1701
+  M3.6 <- 0.1050
   
 # Set a value for the air (surface) temperature.
   T.surface.C <- 25  # [°C]
   T.surface <- T.surface.C + 273.15  # [K]
   
-# # Save table of parameters as a .csv file.
+# # Save table of parameters as a .csv file. Uncomment if needed.
 # # Create and populate a data frame of model parameters (MP).
 #   MP <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3))
 #   colnames(MP) <- c("Variable", "Units", "Value")
@@ -165,8 +175,9 @@
 #   MP[23, ] <- c("Temperature, surface", "°C", T.surface.C)
 #   MP[24, ] <- c("Temperature, liquidus", "°C", T.liquidus.C)
 #   MP[25, ] <- c("Temperature, solidus", "°C", T.solidus.C)
-# # Write table to csv.
-#   write.csv(MP, file = "/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.05.28/ModelParameters_2020.05.28.csv")
+#   MP[26, ] <- c("Temperature, Zr saturation", "°C", T.Zrsat.C)
+# # Write table to csv. Change path for your working directory.
+#   write.csv(MP, file = "Morokweng Results/ModelParameters_2020.05.28.csv")
   
 
 ## INITIAL T DISTRIBUTION ------------------------------------------------------
@@ -208,8 +219,7 @@
       }
     }
   }
-  # Check to see how the uplift geometry and scaling looks (uncomment next two
-  # lines).
+# Check to see how the uplift geometry and scaling looks (uncomment next line).
   # levelplot(T.0 - 273.15, col.regions = rev(hcl.colors(n = 25, palette = 'Spectral')))
 
 # Emplace the melt sheet on the initial conditions matrix. 
@@ -250,10 +260,10 @@ levelplot(T.0 - 273.15,
   # Turn on contour lines.
   contour = T,
   # Set colorbar limits and density of contour interval on plot.
-  # Next line: color all temperatures.
+  # Uncomment the next line to color all temperatures.
   # at = c(seq(0, 2400, length.out = 12.5)))
-  # Next line: color a restricted range of temperatures to better see the
-  # gradient of the central uplift region.
+  # Or, using the next line: color a restricted range of temperatures to better 
+  # see the gradient of the central uplift region.
   at = c(seq(0, 1000, length.out = 11)))
 
 
@@ -321,11 +331,11 @@ levelplot(T.0 - 273.15,
   # Save the model results of temperature to R environment.
   T.n <- model.results$T.n  # [K]
 
-# Save model results to computer hard drive.
-  # saveRDS(T.n, file = "/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.06.03/T.n.RData")
-# Load in previous model run results.
-  # T.n <- readRDS("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.06.03/T.n.RData")
-
+# Save model results to computer. Change path for your working directory.
+  # saveRDS(T.n, file = "Morokweng Results/MeltSheet Results_2020.06.23/T.n_1700.RData")
+# Load in previous model run results. Change path for your working directory.
+  # T.n <- readRDS("Morokweng Results/MeltSheet Results_2020.06.23/T.n_1700.RData")
+  
   
 ## PLOT 2D MODEL RESULTS -------------------------------------------------------
 
@@ -357,7 +367,7 @@ levelplot(T.0 - 273.15,
     aspect = (zval / 2) / xval,
     # Set the color scheme.
     col.regions = hcl.colors(n = 12.5, palette = "Blue-Red"),
-    # Commount out the line above and uncomment the lind below to plot in 
+    # Comment out the line above and uncomment the lind below to plot in 
     # grayscale.
     # col.regions = rev(hcl.colors(n = 25, palette = 'Grays')),  
     contour = T,  # Add contour lines.
@@ -390,7 +400,7 @@ levelplot(T.0 - 273.15,
       aspect = (zval / 2) / xval,
       col.regions = hcl.colors(n = 12.5, palette = "Blue-Red"),
       contour = T,
-      at = c(seq(0, 2400, length.out = 12.5))) 
+      at = c(seq(0, 2400, length.out = 12.5)))
     return(OutputPlot)
   }
 
@@ -425,19 +435,19 @@ levelplot(T.0 - 273.15,
   }
 
 # Check to see that the model ran correctly and that the plotting functions
-# work (uncomment the next nine lines).
+# work (uncomment the next lines).
   # levelplotCH(1)
   # levelplotCH(51)
-  # levelplotCH(101)
+  # levelplotCH(801)
   # levelplotCHzoom(1)
   # levelplotCHzoom(51)
-  # levelplotCHzoom(101)
+  # levelplotCHzoom(801)
   # levelplotCHzoom.nocolor(1)
   # levelplotCHzoom.nocolor(51)
-  # levelplotCHzoom.nocolor(101)
+  # levelplotCHzoom.nocolor(801)
 
 # Output plots as a PDF.
-  # pdf("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.06.03/MeltSheet_Morokweng_2D results_2020.06.03.pdf",
+  # pdf("Morokweng Results/MeltSheet Results_2020.06.03/MeltSheet_Morokweng_2D results_2020.06.03.pdf",
   # width = 8.5, height = 11)
   # keyplots <- c(1, 51, 101, 151, 201, 251, 301, 401, 501)
   # levelplotCH(1)
@@ -499,27 +509,27 @@ levelplot(T.0 - 273.15,
   text(x = T.liquidus.C + 30, y = 3.5, labels = "liquidus", srt = 270)
   text(x = T.solidus.C + 30, y = 3.5, labels = "solidus", srt = 270)
   # Add horizontal lines for sample horizons.
-  lines(c(0, 2400), c(base.MS - 0.7566, base.MS - 0.7566))  # M3-1
-  lines(c(0, 2400), c(base.MS - 0.4711, base.MS - 0.4711))  # M3-2
-  lines(c(0, 2400), c(base.MS - 0.2599, base.MS - 0.2599))  # M3-3
-  lines(c(0, 2400), c(base.MS - 0.1716, base.MS - 0.1716))  # M3-4
-  lines(c(0, 2400), c(base.MS - 0.1081, base.MS - 0.1081))  # M3-6
-  lines(c(0, 2400), c(base.MS, base.MS), col = "blue")  # base of melt sheet
+  lines(c(0, 2500), c(base.MS - M3.1, base.MS - M3.1))  # M3-1
+  lines(c(0, 2500), c(base.MS - M3.2, base.MS - M3.2))  # M3-2
+  lines(c(0, 2500), c(base.MS - M3.3, base.MS - M3.3))  # M3-3
+  lines(c(0, 2500), c(base.MS - M3.4, base.MS - M3.4))  # M3-4
+  lines(c(0, 2500), c(base.MS - M3.6, base.MS - M3.6))  # M3-6
+  lines(c(0, 2500), c(base.MS, base.MS), col = "blue")  # base of melt sheet
   # Add a legend. 
   legend("bottomright", 
          paste(round(((keyresults - 1) * dt.choice.yr), digits = 0) / 1000), 
          cex = 0.8, col = colors, lty = "solid", lwd = 1.75,
          title = "time elapsed (ka)")
 
-# Zoom in on samples to see when each sample passes through the solidus
+# Zoom in on samples to see when each sample passes through the solidus.
   # Extract limited results to plot.
   T.1D.lim2 <- list()
   lim2.iterations <- c(109, 111, 113,  # M3-1
                        179, 181, 183,  # M3-2
                        228, 230, 232,  # M3-3
                        248, 250, 252,  # M3-4
-                       263, 264, 265, 266)  # M3-6
-  for (n in 1:20){
+                       264, 265, 266)  # M3-6
+  for (n in 1:length(lim2.iterations)){
     T.1D.lim2[[n]] <- T.1D[[lim2.iterations[[n]]]]
   }
   # Make plot.
@@ -540,23 +550,63 @@ levelplot(T.0 - 273.15,
   }
   title("1D profile of borehole M3", cex.main = 0.8)
   lines(c(T.solidus.C, T.solidus.C), c(0, 1.5), lwd = 2, col = "gray")
-  text(x = T.solidus.C + 1, y = 0.6, labels = "solidus", srt = 270)
-  lines(c(780, 820), c(base.MS - 0.7566, base.MS - 0.7566))  # M3-1
-  lines(c(780, 820), c(base.MS - 0.4711, base.MS - 0.4711))  # M3-2
-  lines(c(780, 820), c(base.MS - 0.2599, base.MS - 0.2599))  # M3-3
-  lines(c(780, 820), c(base.MS - 0.1716, base.MS - 0.1716))  # M3-4
-  lines(c(780, 820), c(base.MS - 0.1081, base.MS - 0.1081))  # M3-6
+  text(x = T.solidus.C + 1, y = 0.6, labels = "solidus", srt = 270)  
+  lines(c(0, 2500), c(base.MS - M3.1, base.MS - M3.1))  # M3-1
+  lines(c(0, 2500), c(base.MS - M3.2, base.MS - M3.2))  # M3-2
+  lines(c(0, 2500), c(base.MS - M3.3, base.MS - M3.3))  # M3-3
+  lines(c(0, 2500), c(base.MS - M3.4, base.MS - M3.4))  # M3-4
+  lines(c(0, 2500), c(base.MS - M3.6, base.MS - M3.6))  # M3-6
   legend("bottomright", paste((lim2.iterations - 1) / 10), cex = 0.8, 
          col = colors, lty = "solid", lwd = 1.75, title = "time elapsed (ka)")
+  
+# Zoom in on samples to see when each sample passes through the Zr saturation T.
+  # Extract limited results to plot.
+  T.1D.lim3 <- list()
+  lim3.iterations <- c(96, 97, 98,  # M3-1
+                       155, 156, 157, 158,  # M3-2
+                       195, 196, 197,  # M3-3
+                       211, 212, 213,  # M3-4
+                       222, 223, 224, 225)  # M3-6
+  for (n in 1:length(lim3.iterations)){
+    T.1D.lim3[[n]] <- T.1D[[lim3.iterations[[n]]]]
+  }
+  # Make plot.
+  plot.new()  
+  plot(range(860, 900), range(0.4, 1.2),
+       type = "n",
+       xlab = "Temperature (°C)",
+       ylab = "Depth (km)",
+       ylim = c(1.2, 0.4),
+       yaxs = "i",
+       xlim = c(860, 900),
+       xaxs = "i")
+  colors <- (hcl.colors(n = length(T.1D.lim3), palette = "Spectral"))
+  for (i in 1:length(T.1D.lim3)) {
+    tempprofile <- T.1D.lim3[[i]] - 273.15
+    lines(tempprofile, z / 1000, type = "l", lwd = 1.75, col = colors[i],
+          lty = "solid")
+  }
+  title("1D profile of borehole M3", cex.main = 0.8)
+  lines(c(T.Zrsat.C, T.Zrsat.C), c(0, 1.5), lwd = 2, col = "gray")
+  text(x = T.Zrsat.C + 1, y = 0.6, labels = "Zr saturation", srt = 270)  
+  lines(c(0, 2500), c(base.MS - M3.1, base.MS - M3.1))  # M3-1
+  lines(c(0, 2500), c(base.MS - M3.2, base.MS - M3.2))  # M3-2
+  lines(c(0, 2500), c(base.MS - M3.3, base.MS - M3.3))  # M3-3
+  lines(c(0, 2500), c(base.MS - M3.4, base.MS - M3.4))  # M3-4
+  lines(c(0, 2500), c(base.MS - M3.6, base.MS - M3.6))  # M3-6
+  legend("bottomright", paste((lim3.iterations - 1) / 10), cex = 0.8, 
+         col = colors, lty = "solid", lwd = 1.75, title = "time elapsed (ka)")  
+  
 
-# Save results from looking at plot.
+# Save results from looking at plots.
   relative.ages <- data.frame(sample = c("M3-1", "M3-2", "M3-3", "M3-4", 
     "M3-6"),
-    ka = c(11, 18, 22.9, 24.9, 26.4),
+    solidus.ka = c(11, 18, 22.9, 24.9, 26.4),
+    Zrsat.ka = c(9.6, 15.5, 19.5, 21.1, 22.2),
     UPb.age = c(146.056, 146.060, 146.053, 146.065, 146.018),
     UPb.uncertainty = c(0.018, 0.017, 0.015, 0.014, 0.017),
-    strat.pos = c((base.MS - 0.7566), (base.MS - 0.4711), (base.MS - 0.2599),
-    (base.MS - 0.1716), (base.MS - 0.1081)))
+    strat.pos = c((base.MS - M3.1), (base.MS - M3.2), (base.MS - M3.3),
+    (base.MS - M3.4), (base.MS - M3.6)))
 
 
 ## EXTRACT AND PLOT 1D PROFILE RESULTS FOR CENTER OF MELT SHEET ----------------
@@ -602,17 +652,53 @@ levelplot(T.0 - 273.15,
   lines(c(T.solidus.C, T.solidus.C), c(0, 4), lwd = 2, col = "gray")
   text(x = T.liquidus.C + 30, y = 3.5, labels = "liquidus", srt = 270)
   text(x = T.solidus.C + 30, y = 3.5, labels = "solidus", srt = 270)
-  lines(c(0, 2400), c(base.MS - 0.7566, base.MS - 0.7566))  # M3-1
-  lines(c(0, 2400), c(base.MS - 0.4711, base.MS - 0.4711))  # M3-2
-  lines(c(0, 2400), c(base.MS - 0.2599, base.MS - 0.2599))  # M3-3
-  lines(c(0, 2400), c(base.MS - 0.1716, base.MS - 0.1716))  # M3-4
-  lines(c(0, 2400), c(base.MS - 0.1081, base.MS - 0.1081))  # M3-6
-  lines(c(0, 2400), c(base.MS, base.MS), col = "blue")  # base of melt sheet
+  lines(c(0, 2500), c(base.MS - 0.7566, base.MS - 0.7566))  # M3-1
+  lines(c(0, 2500), c(base.MS - 0.4711, base.MS - 0.4711))  # M3-2
+  lines(c(0, 2500), c(base.MS - 0.2599, base.MS - 0.2599))  # M3-3
+  lines(c(0, 2500), c(base.MS - 0.1716, base.MS - 0.1716))  # M3-4
+  lines(c(0, 2500), c(base.MS - 0.1081, base.MS - 0.1081))  # M3-6
+  lines(c(0, 2500), c(base.MS, base.MS), col = "blue")  # base of melt sheet
+  lines(c(0, 2500), 
+        c(2 * meltsheetthickness / 1000, 2 * meltsheetthickness / 1000), 
+        col = "red")  # cutoff for melt availability for the melt sheet system
   legend("bottomright", 
-         paste(round(((keyresults - 1) * dt.choice.yr), digits = 0) / 1000), 
+         paste(round(((keyresults.center - 1) * dt.choice.yr), digits = 0) / 1000), 
          cex = 0.8, col = colors, lty = "solid", lwd = 1.75,
          title = "time elapsed (ka)")
-
+  
+# Find when 2 * meltsheetthickness passed through the solidus at the center of
+# the model.
+  T.1D.lim.meltavail <- list()
+  lim.meltavail.iterations <- c(652, 653, 654, 655, 656)
+  # lim.meltavail.iterations <- c(541, 542, 543, 544, 545, 546)
+  for (n in 1:length(lim.meltavail.iterations)){
+    T.1D.lim.meltavail[[n]] <- T.1D.center[[lim.meltavail.iterations[[n]]]]
+  }
+  # Make plot.
+  plot.new()  
+  plot(range(780, 820), range(2.30, 2.24),
+       type = "n",
+       xlab = "Temperature (°C)",
+       ylab = "Depth (km)",
+       ylim = c(2.30, 2.24),
+       yaxs = "i",
+       xlim = c(780, 820),
+       xaxs = "i")
+  colors <- (hcl.colors(n = length(T.1D.lim.meltavail), palette = "Spectral"))
+  for (i in 1:length(T.1D.lim.meltavail)) {
+    tempprofile <- T.1D.lim.meltavail[[i]] - 273.15
+    lines(tempprofile, z / 1000, type = "l", lwd = 1.75, col = colors[i],
+          lty = "solid")
+  }
+  title("1D profile of center of melt sheet", cex.main = 0.8)
+  lines(c(T.solidus.C, T.solidus.C), c(2.4, 2.1), lwd = 2, col = "gray")
+  text(x = T.solidus.C - 1, y = 2.295, labels = "solidus", srt = 270)  
+  lines(c(0, 2500), 
+        c(2 * meltsheetthickness / 1000, 2 * meltsheetthickness / 1000), 
+        col = "red")  # cutoff for melt availability for the melt sheet system
+  legend("bottomright", paste((lim.meltavail.iterations - 1) / 10), cex = 0.8, 
+         col = colors, lty = "solid", lwd = 1.75, title = "time elapsed (ka)")  
+  
   
 ## PLOT MODEL RESULTS THROUGH TIME FOR EACH SAMPLE -----------------------------
   
@@ -631,11 +717,11 @@ levelplot(T.0 - 273.15,
   # Initialize vector to hold sample depths.
   z.samples <- vector()
   # Find nodal depth of M3-1.
-  z.samples[[1]] <- round(((base.MS - 0.7566) * 1000) / dz, digits = 0)  # M3-1
-  z.samples[[2]] <- round(((base.MS - 0.4711) * 1000) / dz, digits = 0)  # M3-2
-  z.samples[[3]] <- round(((base.MS - 0.2599) * 1000) / dz, digits = 0)  # M3-3
-  z.samples[[4]] <- round(((base.MS - 0.1716) * 1000) / dz, digits = 0)  # M3-4
-  z.samples[[5]] <- round(((base.MS - 0.1081) * 1000) / dz, digits = 0)  # M3-6
+  z.samples[[1]] <- round(((base.MS - M3.1) * 1000) / dz, digits = 0)  # M3-1
+  z.samples[[2]] <- round(((base.MS - M3.2) * 1000) / dz, digits = 0)  # M3-2
+  z.samples[[3]] <- round(((base.MS - M3.3) * 1000) / dz, digits = 0)  # M3-3
+  z.samples[[4]] <- round(((base.MS - M3.4) * 1000) / dz, digits = 0)  # M3-4
+  z.samples[[5]] <- round(((base.MS - M3.6) * 1000) / dz, digits = 0)  # M3-6
 # Iterate through T.n list, extract T values at the M3 borehole for each sample,
 # save in matrix T.M3.
   for (n in 1:length(z.samples)) {
@@ -695,7 +781,7 @@ levelplot(T.0 - 273.15,
 # ages and thermal model ages
   
 # Find thermal model anchoring point (mean variance of upper four samples).
-  anchor.model <- mean(relative.ages$ka[1:4])
+  anchor.model <- mean(relative.ages$solidus.ka[1:4])
 # Find U-Pb anchoring point of upper four samples.
   # anchor.UPb.simple <- mean(relative.ages$UPb.age[1:4])
   # Find max and min ages of y axis.
@@ -770,7 +856,7 @@ levelplot(T.0 - 273.15,
   # Add anchor line.
   lines(x = c(anchor.UPb, anchor.UPb), y = c(0.2, 1.4))
   
-# Make plot of thermal model ages by stratigraphic height.
+# Make plot of solidus thermal model ages by stratigraphic height.
   # Need to cover range from 146.10 to 145.98 Ma (0.12 Ma)
   plot.new()
   plot(range(0, 0.12), range(0.2, 1.4),
@@ -784,8 +870,28 @@ levelplot(T.0 - 273.15,
   # Set number of colors based on number of model results being plotted.
   colors <- (hcl.colors(n = 5, palette = "Temps"))
   # Add line with points for U-Pb time.
-  lines(x = relative.ages$ka / 1000, y = relative.ages$strat.pos)
-  points(x = relative.ages$ka / 1000, y = relative.ages$strat.pos,
+  lines(x = relative.ages$solidus.ka / 1000, y = relative.ages$strat.pos)
+  points(x = relative.ages$solidus.ka / 1000, y = relative.ages$strat.pos,
+         pch = 21, lwd = 0.5, col = "black", cex = 1, bg = colors)
+  # Add anchor line.
+  lines(x = c(anchor.model / 1000, anchor.model / 1000), y = c(0.2, 1.4))
+  
+# Make plot of Zr saturation thermal model ages by stratigraphic height.
+  # Need to cover range from 146.10 to 145.98 Ma (0.12 Ma)
+  plot.new()
+  plot(range(0, 0.12), range(0.2, 1.4),
+       type = "n",
+       xlab = "time (Ma)",
+       ylab = "stratigraphic position of samples",
+       xaxs = "i",
+       yaxs = "i",
+       ylim = c(1.4, 0.2),
+       xlim = c(0, 0.12))
+  # Set number of colors based on number of model results being plotted.
+  colors <- (hcl.colors(n = 5, palette = "Temps"))
+  # Add line with points for U-Pb time.
+  lines(x = relative.ages$Zrsat.ka / 1000, y = relative.ages$strat.pos)
+  points(x = relative.ages$Zrsat.ka / 1000, y = relative.ages$strat.pos,
          pch = 21, lwd = 0.5, col = "black", cex = 1, bg = colors)
   # Add anchor line.
   lines(x = c(anchor.model / 1000, anchor.model / 1000), y = c(0.2, 1.4))
