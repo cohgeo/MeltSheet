@@ -1,6 +1,9 @@
 # This script creates a finite difference model of the cooling of a melt sheet
-# at Chicxulub. 
-# Updated 2020.09.23 CH
+# caused by an impact.
+# In this case we model the cooling of the Chicxulub. melt sheet.
+# This code is designed to run in R.
+# Updated 2020.10.30 CH
+
 
 ## SETUP -----------------------------------------------------------------------
 
@@ -164,7 +167,7 @@
 #   MP[24, ] <- c("Temperature, liquidus", "°C", T.liquidus.C)
 #   MP[25, ] <- c("Temperature, solidus", "°C", T.solidus.C)
 #   MP[26, ] <- c("Temperature, Zr saturation", "°C", T.Zrsat.C)
-# # Write table to csv.
+# # Write table to csv. Change path for your working directory.
 # write.csv(MP, file = "Chicxulub Results/MeltSheetChicxulub_2020.09.22/ModelParameters_2370_2020.09.22.csv")
   
 
@@ -320,10 +323,9 @@ levelplot(T.0 - 273.15,
   # Save the model results of temperature to R environment.
   T.n <- model.results$T.n  # [K]
 
-# Save model results to computer hard drive.
-  saveRDS(T.n, 
-          file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.n_2370_0to10000.RData")
-# Load in previous model run results.
+# Save model results to computer. Change path for your working directory.
+  # saveRDS(T.n, file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.n_2370_0to10000.RData")
+# Load in previous model run results. Change path for your working directory.
   # T.n <- readRDS("Chicxulub Results/MeltSheetChicxulub Results_2020.09.22/T.n_1700_0to10000.RData")
 
 ## PLOT 2D MODEL RESULTS -------------------------------------------------------
@@ -424,7 +426,7 @@ levelplot(T.0 - 273.15,
   }
 
 # Check to see that the model ran correctly and that the plotting functions
-# work (uncomment the next nine lines).
+# work (uncomment the next lines).
   # levelplotCH(1)
   # levelplotCH(2)
   # levelplotCH(5)
@@ -439,8 +441,8 @@ levelplot(T.0 - 273.15,
   # levelplotCHzoom.nocolor(51)
   # levelplotCHzoom.nocolor(101)
 
-# Output plots as a PDF.
-  # pdf("/Users/claireharrigan/Dropbox/IGL + Research/Other projects/MeltSheet/Results/MeltSheet Results_2020.06.03/MeltSheet_Morokweng_2D results_2020.06.03.pdf",
+# Output plots as a PDF. Change path for your working directory.
+  # pdf("Chicxulub results/MeltSheetChicxulub_2020.09.22/MeltSheet_Chicxulub_2D results_2020.09.22.pdf",
   # width = 8.5, height = 11)
   # keyplots <- c(1, 51, 101, 151, 201, 251, 301, 401, 501)
   # levelplotCH(1)
@@ -451,7 +453,6 @@ levelplot(T.0 - 273.15,
   #   print(levelplotCHzoom.nocolor(keyplots[[n]]))
   # }
   # dev.off()
-
 
 
 ## EXTRACT 1D PROFILE RESULTS FOR CENTER OF MELT SHEET -------------------------
@@ -468,9 +469,8 @@ levelplot(T.0 - 273.15,
     T.1D.center[[i]] <- T.n[[i]][(x.num / 2), ]
   }
 
-# Save model results to computer hard drive.
-  saveRDS(T.1D.center, 
-          file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.1D.center_1700_0to10000b.RData")
+# Save model results to computer. Change path for your working directory.
+  # saveRDS(T.1D.center, file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.1D.center_1700_0to10000b.RData")
 
   
 ## RUN MODEL FOR SECOND ITERATION ----------------------------------------------
@@ -489,9 +489,8 @@ levelplot(T.0 - 273.15,
   # Save the model results of temperature to R environment.
   T.n <- model.results$T.n  # [K]
   
-# Save model results to computer hard drive.
-  saveRDS(T.n,
-          file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.1D.center_1700_10002to15003.RData")
+# Save model results to computer. Change path for your working directory.
+  # saveRDS(T.n, file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.1D.center_1700_10002to15003.RData")
 
 # Extract 1D results and append to previous 1D results.
   # Iterate through T.n list, extract temperature values through center of melt 
@@ -514,9 +513,8 @@ levelplot(T.0 - 273.15,
   # should end up with total n + 1 (for T.0)
   T.1D.center <- T.1D.center[-c(10002, 15003)]
   
-# Save model results to computer hard drive.
-  saveRDS(T.1D.center, 
-          file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.1D.center_1700_0to15001.RData")
+# Save model results to computer. Change path for your working directory.
+  # saveRDS(T.1D.center, file = "Chicxulub results/MeltSheetChicxulub_2020.09.22/T.1D.center_1700_0to15001.RData")
   
   
 ## PLOT 1D PROFILE RESULTS FOR CENTER OF MELT SHEET ----------------------------
@@ -534,7 +532,7 @@ levelplot(T.0 - 273.15,
     T.1D.center.lim[[n]] <- T.1D.center[[keyresults.center[[n]]]]
   }
   
-  # Plot 1D profile through the center of the melt sheet. 
+# Plot 1D profile through the center of the melt sheet. 
   plot.new()  
   plot(range(0, 2500), range(0, 10),
        type = "n",
@@ -560,8 +558,8 @@ levelplot(T.0 - 273.15,
   text(x = T.solidus.C + 30, y = 8, labels = "solidus = 997°C", srt = 270)
   text(x = 800 + 30, y = 8, labels = "800°C", srt = 270)
   legend("bottomright", 
-         paste(round(((keyresults.center - 1) * dt.choice.yr), digits = 0) / 1000), 
-         cex = 0.8, col = colors, lty = "solid", lwd = 1.75,
-         title = "time elapsed (ka)")
-  
+    paste(round(((keyresults.center - 1) * dt.choice.yr), digits = 0) / 1000), 
+    cex = 0.8, col = colors, lty = "solid", lwd = 1.75,
+    title = "time elapsed (ka)")
+
   
