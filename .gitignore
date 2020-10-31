@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .DS_store
+.Rhistory (Claires-iMac.local's conflicted copy 2020-09-03)
 # Ignore folders
 Archive
 Results
@@ -10,4 +11,4 @@ Chicxulub results
 Materials from Gavin
 Morokweng Results
 Writing
-.Rhistory (Claires-iMac.local's conflicted copy 2020-09-03)
+
