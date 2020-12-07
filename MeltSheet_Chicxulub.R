@@ -58,7 +58,7 @@
 # Set Zr saturation temperature unknown, set to 0 to prevent issues in code.
   T.Zrsat.C <- 0  # [°C]
 # Set heat capacity with no latent heat.
-  # Suggested value: 1000 J/(kg/K), heat capacity of basement, melt, breccia; 
+  # Suggested value: 1000 J/(kg*K), heat capacity of basement, melt, breccia; 
   # Abramov and Kring (2007)
   Cp.nolatent <- 1000  # [J/(kg*K)]
 # Set initial heat capacity.
